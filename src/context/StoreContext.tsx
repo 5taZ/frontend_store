@@ -64,11 +64,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const tg = (window as any).Telegram?.WebApp;
         
         if (tg) {
-          // Инициализация Telegram WebApp
           tg.ready();
           tg.expand();
           
-          // Настройка цветов под тему Telegram (опционально)
           if (tg.colorScheme === 'dark') {
             document.body.style.backgroundColor = '#0a0a0a';
           }
@@ -79,14 +77,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             console.log('Telegram user detected:', tgUser.username);
             
             try {
-              // Отправляем на бэкенд для получения/создания пользователя
-              // Бэкенд сам решит, админ ли это, на основе initData
               const dbUser = await api.getOrCreateUser(
                 tgUser.id,
                 tgUser.username || `User_${tgUser.id}`
               );
               
-              // isAdmin приходит с бэкенда (не определяем на фронте!)
               const userIsAdmin = dbUser.is_admin || false;
               setIsAdmin(userIsAdmin);
               
@@ -101,7 +96,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               
               setUser(userData);
 
-              // Загружаем продукты
               const productsData = await api.getProducts();
               setProducts(productsData.map((p: any) => ({
                 id: p.id.toString(),
@@ -113,12 +107,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 inStock: p.in_stock
               })));
 
-              // Загружаем заказы
               await loadOrders(dbUser.id, userIsAdmin);
 
             } catch (error) {
               console.error('Backend connection failed:', error);
-              // Фолбэк только если бэкенд недоступен, но Telegram есть
               setUser({
                 id: tgUser.id,
                 username: tgUser.username || 'unknown',
@@ -129,7 +121,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               });
             }
           } else {
-            // Telegram открыт, но пользователь не авторизован (редко)
             console.warn('No Telegram user data');
             setUser({
               id: 0,
@@ -141,7 +132,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             });
           }
         } else {
-          // Режим разработки (не в Telegram)
           console.log('Development mode - no Telegram WebApp');
           setUser({
             id: 999,
@@ -149,11 +139,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             balance: 1000,
             referrals: 0,
             referralLink: 'https://t.me/ResellHubBot?start=dev',
-            isAdmin: true // В dev режиме можно дать права для теста
+            isAdmin: true
           });
           setIsAdmin(true);
           
-          // Загружаем тестовые данные
           const productsData = await api.getProducts().catch(() => []);
           setProducts(productsData);
         }
@@ -194,4 +183,123 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         price: product.price,
         image: product.image,
         description: product.description,
-       
+        category: product.category,
+        in_stock: product.inStock
+      });
+      
+      setProducts((prev) => [{
+        id: dbProduct.id.toString(),
+        name: dbProduct.name,
+        price: dbProduct.price,
+        image: dbProduct.image,
+        description: dbProduct.description,
+        category: dbProduct.category,
+        inStock: dbProduct.in_stock
+      }, ...prev]);
+    } catch (error) {
+      console.error('Failed to add product:', error);
+      throw error;
+    }
+  }, []);
+
+  const removeProduct = useCallback(async (productId: string) => {
+    try {
+      await api.deleteProduct(productId);
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
+    } catch (error) {
+      console.error('Failed to remove product:', error);
+      throw error;
+    }
+  }, []);
+
+  const placeOrder = useCallback(async () => {
+    if (!user || cart.length === 0) return;
+
+    const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    
+    try {
+      const dbOrder = await api.createOrder(user.id, cart, total);
+      
+      const newOrder: Order = {
+        id: dbOrder.id.toString(),
+        userId: user.username,
+        username: user.username,
+        items: [...cart],
+        totalAmount: total,
+        status: OrderStatus.PENDING,
+        date: new Date(dbOrder.created_at).getTime()
+      };
+
+      setOrders(prev => [newOrder, ...prev]);
+      setCart([]);
+      
+      await refreshOrders();
+    } catch (error) {
+      console.error('Failed to place order:', error);
+      throw error;
+    }
+  }, [user, cart, refreshOrders]);
+
+  const processOrder = useCallback(async (orderId: string, approved: boolean) => {
+    if (!isAdmin) {
+      throw new Error('Only admin can process orders');
+    }
+    
+    try {
+      const status = approved ? 'CONFIRMED' : 'CANCELED';
+      await api.updateOrderStatus(orderId, status);
+      
+      setOrders(prevOrders => {
+        return prevOrders.map(order => {
+          if (order.id !== orderId) return order;
+          
+          if (approved) {
+            const itemIdsToRemove = order.items.map(i => i.id);
+            setProducts(prevProds => prevProds.filter(p => !itemIdsToRemove.includes(p.id)));
+          }
+
+          return {
+            ...order,
+            status: approved ? OrderStatus.CONFIRMED : OrderStatus.CANCELED
+          };
+        });
+      });
+      
+      await refreshOrders();
+    } catch (error) {
+      console.error('Failed to process order:', error);
+      throw error;
+    }
+  }, [isAdmin, refreshOrders]);
+
+  return (
+    <StoreContext.Provider
+      value={{
+        products,
+        cart,
+        user,
+        orders,
+        addToCart,
+        removeFromCart,
+        clearCart,
+        addProduct,
+        removeProduct,
+        placeOrder,
+        processOrder,
+        isAdmin,
+        loading,
+        refreshOrders
+      }}
+    >
+      {children}
+    </StoreContext.Provider>
+  );
+};
+
+export const useStore = () => {
+  const context = useContext(StoreContext);
+  if (context === undefined) {
+    throw new Error('useStore must be used within a StoreProvider');
+  }
+  return context;
+};
