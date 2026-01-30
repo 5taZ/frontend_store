@@ -1,16 +1,41 @@
 // API client for backend communication
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Получаем initData из Telegram WebApp
+const getInitData = (): string => {
+  if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+    return (window as any).Telegram.WebApp.initData || '';
+  }
+  return '';
+};
+
+// Получаем Telegram User из initDataUnsafe (для фолбэка)
+const getTelegramUser = () => {
+  if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+    return (window as any).Telegram.WebApp.initDataUnsafe?.user || null;
+  }
+  return null;
+};
 
 export const api = {
   // User endpoints
-  async getOrCreateUser(telegramId: number, username: string, isAdmin: boolean) {
+  async getOrCreateUser(telegramId: number, username: string) {
+    const initData = getInitData();
+    
     const response = await fetch(`${API_BASE_URL}/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegram_id: telegramId, username, is_admin: isAdmin })
+      body: JSON.stringify({ 
+        telegram_id: telegramId, 
+        username,
+        init_data: initData // ⬅️ Передаем для валидации на бэкенде
+      })
     });
-    if (!response.ok) throw new Error('Failed to get user');
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to get user');
+    }
     return response.json();
   },
 
@@ -25,7 +50,10 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(product)
+      body: JSON.stringify({
+        ...product,
+        init_data: getInitData() // Защита от подделки
+      })
     });
     if (!response.ok) throw new Error('Failed to add product');
     return response.json();
@@ -33,7 +61,9 @@ export const api = {
 
   async deleteProduct(productId: string) {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ init_data: getInitData() })
     });
     if (!response.ok) throw new Error('Failed to delete product');
     return response.json();
@@ -41,13 +71,22 @@ export const api = {
 
   // Order endpoints
   async getAllOrders() {
-    const response = await fetch(`${API_BASE_URL}/orders`);
+    // Для получения списка проверка initData менее критична, но можно добавить header
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      headers: {
+        'X-Telegram-Init-Data': getInitData()
+      }
+    });
     if (!response.ok) throw new Error('Failed to fetch orders');
     return response.json();
   },
 
   async getUserOrders(userId: number) {
-    const response = await fetch(`${API_BASE_URL}/orders/user/${userId}`);
+    const response = await fetch(`${API_BASE_URL}/orders/user/${userId}`, {
+      headers: {
+        'X-Telegram-Init-Data': getInitData()
+      }
+    });
     if (!response.ok) throw new Error('Failed to fetch user orders');
     return response.json();
   },
@@ -56,9 +95,17 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, items, total_amount: totalAmount })
+      body: JSON.stringify({ 
+        user_id: userId, 
+        items, 
+        total_amount: totalAmount,
+        init_data: getInitData() // ⬅️ Критически важно для защиты заказов
+      })
     });
-    if (!response.ok) throw new Error('Failed to create order');
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to create order');
+    }
     return response.json();
   },
 
@@ -66,7 +113,10 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ 
+        status,
+        init_data: getInitData()
+      })
     });
     if (!response.ok) throw new Error('Failed to update order status');
     return response.json();
