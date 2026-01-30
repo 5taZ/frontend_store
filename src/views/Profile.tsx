@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Clock, CheckCircle, XCircle, Package } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Package } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus } from '../types';
 
@@ -8,22 +8,10 @@ const Profile: React.FC = () => {
 
   if (!user) return null;
 
+  // Исправлен фильтр - используем user.id (number) вместо username
   const userOrders = orders
-    .filter(order => order.userId === user.username)
+    .filter(order => order.userId === user.id)
     .sort((a, b) => b.date - a.date);
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(user.referralLink);
-    // Use Telegram native alert if possible, otherwise browser alert
-    const tg = (window as any).Telegram?.WebApp;
-    
-    // showPopup requires Web App version 6.2+
-    if (tg && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
-        tg.showPopup({ title: 'Success', message: 'Referral link copied to clipboard!' });
-    } else {
-        alert("Referral link copied!");
-    }
-  };
 
   const getStatusStyle = (status: OrderStatus) => {
     switch (status) {
@@ -62,32 +50,6 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800">
-            <p className="text-neutral-400 text-xs mb-1">Balance</p>
-            <p className="text-xl font-bold text-white">{user.balance.toLocaleString('ru-RU')} ₽</p>
-        </div>
-        <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800">
-            <p className="text-neutral-400 text-xs mb-1">Referrals</p>
-            <p className="text-xl font-bold text-white">{user.referrals}</p>
-        </div>
-      </div>
-
-      {/* Referral Section */}
-      <div className="bg-neutral-900 p-5 rounded-2xl border border-neutral-800">
-        <h3 className="text-sm font-semibold text-white mb-3">Your Referral Link</h3>
-        <div className="flex items-center space-x-2 bg-black p-3 rounded-lg border border-neutral-800">
-          <p className="text-xs text-neutral-400 truncate flex-1">{user.referralLink}</p>
-          <button onClick={handleCopyLink} className="text-white hover:text-red-500 transition-colors">
-            <Copy size={16} />
-          </button>
-        </div>
-        <p className="text-[10px] text-neutral-500 mt-3">
-          Invite friends and earn 5% from their purchases directly to your balance.
-        </p>
-      </div>
-
       {/* Order History */}
       <div>
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -124,14 +86,14 @@ const Profile: React.FC = () => {
                                         <span className="text-neutral-200 line-clamp-1 flex-1 pr-4">
                                             {item.name} <span className="text-neutral-500">x{item.quantity}</span>
                                         </span>
-                                        <span className="text-neutral-400">{(item.price * item.quantity).toLocaleString()} ₽</span>
+                                        <span className="text-neutral-400">{(item.price * item.quantity).toLocaleString()} BYN</span>
                                     </div>
                                 ))}
                             </div>
 
                             <div className="flex justify-between items-center pt-2 border-t border-neutral-800">
                                 <span className="text-xs text-neutral-500">Total Amount</span>
-                                <span className="text-white font-bold">{order.totalAmount.toLocaleString()} ₽</span>
+                                <span className="text-white font-bold">{order.totalAmount.toLocaleString()} BYN</span>
                             </div>
                         </div>
                     );
@@ -143,7 +105,7 @@ const Profile: React.FC = () => {
       {/* Info footer */}
       <div className="text-center text-neutral-600 text-xs mt-8">
         <p>Authenticated via Telegram</p>
-        <p className="mt-1 opacity-50">Next Gear v1.0.4</p>
+        <p className="mt-1 opacity-50">Next Gear v1.0.5</p>
       </div>
     </div>
   );
