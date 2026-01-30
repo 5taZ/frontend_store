@@ -13,12 +13,10 @@ export interface CartItem extends Product {
 }
 
 export interface User {
-  id: number; // Database ID
+  id: number;
   username: string;
-  balance: number;
-  referrals: number;
-  referralLink: string;
   isAdmin: boolean;
+  // Убраны balance, referrals, referralLink
 }
 
 export enum View {
@@ -37,7 +35,7 @@ export enum OrderStatus {
 
 export interface Order {
   id: string;
-  userId: string;
+  userId: number; // Изменено на number (ID из БД)
   username: string;
   items: CartItem[];
   totalAmount: number;
