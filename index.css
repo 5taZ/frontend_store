@@ -1,0 +1,20 @@
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background-color: #0a0a0a;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+#root {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
