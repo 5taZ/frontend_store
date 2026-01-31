@@ -12,7 +12,7 @@ const Profile: React.FC = () => {
     .filter(order => order.userId === user.id)
     .sort((a, b) => b.date - a.date);
 
-  // Возвращаем иконку и стили для каждого статуса (МЯГКИЕ ЦВЕТА)
+  // Возвращаем иконку и стили для каждого статуса (БОЛЕЕ МЯГКИЕ ЦВЕТА)
   const getStatusConfig = (status: OrderStatus) => {
     switch (status) {
       case OrderStatus.CONFIRMED:
@@ -20,24 +20,21 @@ const Profile: React.FC = () => {
           icon: <CheckCircle size={16} className="text-emerald-400" />,
           badgeClass: 'bg-emerald-400/5 border-emerald-400/10',
           label: 'Подтвержден',
-          color: 'text-emerald-400',
-          iconColor: 'text-emerald-400'
+          color: 'text-emerald-400'
         };
       case OrderStatus.CANCELED:
         return {
           icon: <XCircle size={16} className="text-rose-400" />,
           badgeClass: 'bg-rose-400/5 border-rose-400/10',
           label: 'Отменен',
-          color: 'text-rose-400',
-          iconColor: 'text-rose-400'
+          color: 'text-rose-400'
         };
       default: // PENDING
         return {
           icon: <Clock size={16} className="text-amber-400" />,
           badgeClass: 'bg-amber-400/5 border-amber-400/10',
           label: 'В обработке',
-          color: 'text-amber-400',
-          iconColor: 'text-amber-400'
+          color: 'text-amber-400'
         };
     }
   };
