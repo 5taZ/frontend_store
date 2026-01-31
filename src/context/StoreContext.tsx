@@ -232,16 +232,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [refreshProducts]);
 
-  // ✅ НОВОЕ: Обновление товара
+  // ✅ НОВОЕ: Обновление товара с логированием и преобразованием quantity
   const updateProduct = useCallback(async (productId: string, product: Partial<Product>) => {
+    console.log('🔄 updateProduct called:', { productId, product });
+    
+    // ✅ ИСПРАВЛЕНО: Убедимся, что quantity - число
+    if (product.quantity !== undefined && typeof product.quantity !== 'number') {
+      console.warn('⚠️ Quantity is not a number, converting:', product.quantity);
+      product = { ...product, quantity: Number(product.quantity) };
+    }
+    
     // Оптимистично обновляем в UI
     setProducts(prev => prev.map(p => 
       p.id === productId ? { ...p, ...product } : p
     ));
     
     try {
-      await api.updateProduct(productId, product);
+      const result = await api.updateProduct(productId, product);
+      console.log('✅ updateProduct succeeded:', result);
+      return result;
     } catch (error) {
+      console.error('❌ updateProduct failed:', error);
       // Откат при ошибке
       refreshProducts();
       throw error;
