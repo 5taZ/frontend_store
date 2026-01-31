@@ -13,6 +13,7 @@ interface StoreContextType {
   addProduct: (product: Product) => Promise<void>;
   removeProduct: (productId: string) => Promise<void>;
   placeOrder: () => Promise<void>;
+  cancelOrder: (orderId: string) => Promise<void>; // Добавлено
   processOrder: (orderId: string, approved: boolean) => Promise<void>;
   isAdmin: boolean;
   loading: boolean;
@@ -40,7 +41,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       setOrders(ordersData.map((o: any) => ({
         id: o.id.toString(),
-        userId: o.user_id, // Важно: number из БД
+        userId: o.user_id,
         username: o.username || 'unknown',
         items: o.items || [],
         totalAmount: o.total_amount,
@@ -74,8 +75,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           const tgUser = tg.initDataUnsafe?.user;
           
           if (tgUser) {
-            console.log('Telegram user detected:', tgUser.username);
-            
             try {
               const dbUser = await api.getOrCreateUser(
                 tgUser.id,
@@ -85,7 +84,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               const userIsAdmin = dbUser.is_admin || false;
               setIsAdmin(userIsAdmin);
               
-              // Упрощенный объект User без balance/referrals
+              // Упрощенный User без balance/referrals
               const userData: User = {
                 id: dbUser.id,
                 username: dbUser.username,
@@ -99,7 +98,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 id: p.id.toString(),
                 name: p.name,
                 price: p.price,
-                image: p.image,
+                image: p.image, // Теперь может быть base64
                 description: p.description,
                 category: p.category,
                 inStock: p.in_stock
@@ -116,7 +115,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               });
             }
           } else {
-            console.warn('No Telegram user data');
             setUser({
               id: 0,
               username: 'guest',
@@ -124,8 +122,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             });
           }
         } else {
-          // Режим разработки
-          console.log('Development mode - no Telegram WebApp');
+          // Dev mode
           setUser({
             id: 999,
             username: 'dev_user',
@@ -171,7 +168,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const dbProduct = await api.addProduct({
         name: product.name,
         price: product.price,
-        image: product.image,
+        image: product.image, // base64 или URL
         description: product.description,
         category: product.category,
         in_stock: product.inStock
@@ -202,7 +199,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
-  // ОСНОВНОЕ ИЗМЕНЕНИЕ: Сразу резервируем товары при заказе
+  // Создание заказа + немедленное удаление из ассортимента (резервирование)
   const placeOrder = useCallback(async () => {
     if (!user || cart.length === 0) return;
 
@@ -213,7 +210,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       const newOrder: Order = {
         id: dbOrder.id.toString(),
-        userId: dbOrder.user_id, // number из БД
+        userId: dbOrder.user_id,
         username: user.username,
         items: [...cart],
         totalAmount: total,
@@ -221,7 +218,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         date: new Date(dbOrder.created_at).getTime()
       };
 
-      // СРАЗУ УДАЛЯЕМ ТОВАРЫ ИЗ АССОРТИМЕНТА (резервирование)
+      // СРАЗУ удаляем товары из ассортимента (резервирование)
       const purchasedIds = cart.map(item => item.id);
       setProducts(prev => prev.filter(p => !purchasedIds.includes(p.id)));
 
@@ -234,39 +231,54 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [user, cart]);
 
-  // ОСНОВНОЕ ИЗМЕНЕНИЕ: Логика возврата при отмене
+  // Отмена заказа пользователем (только PENDING)
+  const cancelOrder = useCallback(async (orderId: string) => {
+    if (!user) return;
+    
+    try {
+      const tg = (window as any).Telegram?.WebApp;
+      const result = await api.updateOrderStatus(orderId, 'CANCELED', tg?.initData, user.id);
+      
+      // Обновляем локальный статус
+      setOrders(prev => prev.map(o => 
+        o.id === orderId ? { ...o, status: OrderStatus.CANCELED } : o
+      ));
+      
+      // Возвращаем товары в ассортимент (бэкенд уже вернул, обновляем UI)
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        setProducts(prev => [...order.items.map(i => ({ ...i, inStock: true })), ...prev]);
+      }
+      
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      alert('Failed to cancel order. Only pending orders can be cancelled.');
+    }
+  }, [user, orders]);
+
+  // Обработка заказа админом (подтверждение/отмена)
   const processOrder = useCallback(async (orderId: string, approved: boolean) => {
     if (!isAdmin) {
       throw new Error('Only admin can process orders');
     }
     
     try {
+      const tg = (window as any).Telegram?.WebApp;
       const status = approved ? 'CONFIRMED' : 'CANCELED';
-      await api.updateOrderStatus(orderId, status);
+      await api.updateOrderStatus(orderId, status, tg?.initData);
       
-      // Находим заказ в локальном состоянии
-      const orderToProcess = orders.find(o => o.id === orderId);
-      
-      if (!approved && orderToProcess) {
-        // ОТМЕНА: Возвращаем товары в ассортимент
-        // Проверяем, нет ли уже таких товаров (чтобы не дублировать)
-        setProducts(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const itemsToReturn = orderToProcess.items.filter(item => !existingIds.has(item.id));
-          return [...itemsToReturn, ...prev];
-        });
-        console.log('✅ Order canceled: items returned to store');
+      // Если отменено админом - возвращаем товары
+      if (!approved) {
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+          setProducts(prev => [...order.items.map(i => ({ ...i, inStock: true })), ...prev]);
+        }
       }
       
-      // Если approved - товары остаются удаленными (уже куплены)
-      if (approved) {
-        console.log('✅ Order confirmed: items stay removed');
-      }
-
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
-            ? { ...order, status: approved ? OrderStatus.CONFIRMED : OrderStatus.CANCELED } 
+            ? { ...order, status: approved ? OrderStatus.CONFIRMED : OrderStatus.CANCELED }
             : order
         )
       );
@@ -290,6 +302,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addProduct,
         removeProduct,
         placeOrder,
+        cancelOrder, // Добавлено
         processOrder,
         isAdmin,
         loading,
