@@ -1,54 +1,82 @@
 import React from 'react';
-import { Home, Search, ShoppingBag, User, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, User, Package, Grid } from 'lucide-react';
 import { View } from '../types';
-import { useStore } from '../context/StoreContext';
 
 interface LayoutProps {
   children: React.ReactNode;
   currentView: View;
   setCurrentView: (view: View) => void;
+  cartItemsCount: number;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurrentView }) => {
-  const { cart, isAdmin } = useStore();
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-
-  const NavItem = ({ view, icon: Icon, label }: { view: View; icon: any; label: string }) => (
-    <button
-      onClick={() => setCurrentView(view)}
-      className={`flex flex-col items-center justify-center w-full py-2 transition-colors duration-200 ${
-        currentView === view ? 'text-red-600' : 'text-neutral-500 hover:text-neutral-300'
-      }`}
-    >
-      <div className="relative">
-        <Icon size={24} strokeWidth={currentView === view ? 2.5 : 2} />
-        {view === View.CART && cartCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-neutral-950">
-            {cartCount}
-          </span>
-        )}
-      </div>
-      <span className="text-[10px] mt-1 font-medium">{label}</span>
-    </button>
-  );
-
+const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurrentView, cartItemsCount }) => {
   return (
-    <div className="flex flex-col h-screen bg-neutral-950 text-neutral-50 overflow-hidden">
-      <main className="flex-1 overflow-y-auto pb-24 no-scrollbar">
-        <div className="max-w-md mx-auto min-h-full">
-            {children}
+    <div className="min-h-screen bg-neutral-950 text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-800 px-4 py-3">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <h1 className="text-xl font-bold tracking-tight" style={{ fontFamily: 'Rubik, sans-serif' }}>
+            Rubik
+          </h1>
+          <div className="flex items-center gap-2">
+            {cartItemsCount > 0 && (
+              <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {cartItemsCount}
+              </span>
+            )}
+          </div>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-lg mx-auto pb-20">
+        {children}
       </main>
-      
-      <div className="fixed bottom-0 left-0 right-0 bg-neutral-950/95 backdrop-blur-lg border-t border-neutral-800 z-50 pb-safe">
-        <div className="max-w-md mx-auto flex justify-around items-center h-16 px-2">
-          <NavItem view={View.HOME} icon={Home} label="Home" />
-          <NavItem view={View.SEARCH} icon={Search} label="Search" />
-          <NavItem view={View.CART} icon={ShoppingBag} label="Cart" />
-          <NavItem view={View.PROFILE} icon={User} label="Profile" />
-          {isAdmin && <NavItem view={View.ADMIN} icon={ShieldCheck} label="Admin" />}
+
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 pb-safe">
+        <div className="max-w-lg mx-auto grid grid-cols-4 h-16">
+          <button
+            onClick={() => setCurrentView(View.ITEMS)}
+            className={`flex flex-col items-center justify-center space-y-1 ${
+              currentView === View.ITEMS ? 'text-red-500' : 'text-neutral-500'
+            }`}
+          >
+            <Grid size={24} />
+            <span className="text-[10px] font-medium">Items</span>
+          </button>
+          
+          <button
+            onClick={() => setCurrentView(View.CART)}
+            className={`flex flex-col items-center justify-center space-y-1 ${
+              currentView === View.CART ? 'text-red-500' : 'text-neutral-500'
+            }`}
+          >
+            <ShoppingCart size={24} />
+            <span className="text-[10px] font-medium">Cart</span>
+          </button>
+          
+          <button
+            onClick={() => setCurrentView(View.PROFILE)}
+            className={`flex flex-col items-center justify-center space-y-1 ${
+              currentView === View.PROFILE ? 'text-red-500' : 'text-neutral-500'
+            }`}
+          >
+            <User size={24} />
+            <span className="text-[10px] font-medium">Profile</span>
+          </button>
+          
+          <button
+            onClick={() => setCurrentView(View.ADMIN)}
+            className={`flex flex-col items-center justify-center space-y-1 ${
+              currentView === View.ADMIN ? 'text-red-500' : 'text-neutral-500'
+            }`}
+          >
+            <Package size={24} />
+            <span className="text-[10px] font-medium">Admin</span>
+          </button>
         </div>
-      </div>
+      </nav>
     </div>
   );
 };
