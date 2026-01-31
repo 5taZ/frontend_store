@@ -95,18 +95,18 @@ const Admin: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ✅ УЛУЧШЕННАЯ ВАЛИДАЦИЯ (без обязательного изображения)
+    // ✅ УЛУЧШЕННАЯ ВАЛИДАЦИЯ
     const name = formState.name.trim();
-    const price = formState.price.trim();
-    const quantity = formState.quantity.trim();
+    const priceStr = formState.price.trim();
+    const quantityStr = formState.quantity.trim();
     
-    if (!name || !price || !quantity) {
+    if (!name || !priceStr || !quantityStr) {
       alert('Please fill in all required fields: name, price, and quantity');
       return;
     }
     
-    const priceNum = Number(price);
-    const quantityNum = Number(quantity);
+    const priceNum = parseFloat(priceStr);
+    const quantityNum = parseInt(quantityStr, 10);
     
     if (isNaN(priceNum) || priceNum <= 0) {
       alert('Price must be a positive number');
@@ -114,33 +114,43 @@ const Admin: React.FC = () => {
     }
     
     if (isNaN(quantityNum) || quantityNum <= 0) {
-      alert('Quantity must be a positive number');
+      alert('Quantity must be a positive integer');
       return;
     }
 
     try {
+      console.log('📤 Sending product update:', {
+        productId: editingProduct,
+        name,
+        price: priceNum,
+        quantity: quantityNum,
+        image: formState.image || undefined,
+        category: formState.category.trim() || 'General',
+        description: formState.description.trim() || 'No description'
+      });
+      
       if (editingProduct) {
-        // Редактирование существующего товара
+        // ✅ ИСПРАВЛЕНО: Передаём quantity как число
         await updateProduct(editingProduct, {
           name: name,
           price: priceNum,
-          image: formState.image || undefined, // ✅ Изображение необязательно
+          image: formState.image || undefined,
           category: formState.category.trim() || 'General',
           description: formState.description.trim() || 'No description',
-          quantity: quantityNum
+          quantity: quantityNum // ✅ ЧИСЛО, а не строка
         });
         setNotification({ message: 'Product updated!', type: 'success' });
       } else {
-        // Добавление нового товара
+        // ✅ ИСПРАВЛЕНО: Передаём quantity как число
         await addProduct({
           id: Date.now().toString(),
           name: name,
           price: priceNum,
-          image: formState.image || '', // ✅ Разрешаем пустое изображение
+          image: formState.image || '',
           category: formState.category.trim() || 'General',
           description: formState.description.trim() || 'No description',
           inStock: true,
-          quantity: quantityNum
+          quantity: quantityNum // ✅ ЧИСЛО, а не строка
         });
         setNotification({ message: 'Product added!', type: 'success' });
       }
@@ -152,12 +162,17 @@ const Admin: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Error saving product:', error);
       console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
       
       // ✅ ПОКАЗЫВАЕМ ДЕТАЛЬНУЮ ОШИБКУ
+      const errorMessage = error.message || 'Unknown error';
       setNotification({ 
-        message: `Failed to save: ${error.message || 'Unknown error. Check console for details.'}`, 
+        message: `Failed to save: ${errorMessage.substring(0, 50)}`, 
         type: 'error' 
       });
+      
+      // ✅ ДОПОЛНИТЕЛЬНОЕ УВЕДОМЛЕНИЕ В КОНСОЛЬ
+      alert(`Failed to save product: ${errorMessage}\nCheck console for details.`);
     }
   };
 
@@ -348,7 +363,7 @@ const Admin: React.FC = () => {
                 onChange={e => setFormState({...formState, description: e.target.value})}
               />
               
-              {/* ✅ ИСПРАВЛЕНО: Кнопки галочка и крестик без обязательного изображения */}
+              {/* ✅ ИСПРАВЛЕНО: Кнопки галочка и крестик */}
               <div className="flex gap-3">
                 <button 
                   type="button"
