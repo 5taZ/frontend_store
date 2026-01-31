@@ -5,6 +5,8 @@ import Items from './views/Items';
 import Cart from './views/Cart';
 import Profile from './views/Profile';
 import Admin from './views/Admin';
+import Notifications from './components/Notifications';
+import RequestProduct from './views/RequestProduct';
 import { View } from './types';
 
 const AppContent: React.FC = () => {
@@ -12,14 +14,14 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.ITEMS);
 
   if (!user) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-neutral-950 text-white">
-            <div className="flex flex-col items-center gap-4">
-                <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                <div className="font-bold text-xl" style={{ fontFamily: 'Rubik, sans-serif' }}>NextGear</div>
-            </div>
+    return (
+      <div className="flex items-center justify-center h-screen bg-neutral-950 text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="font-bold text-xl" style={{ fontFamily: 'Rubik, sans-serif' }}>NextGear</div>
         </div>
-      );
+      </div>
+    );
   }
 
   const renderView = () => {
@@ -42,13 +44,21 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <Layout 
-      currentView={currentView} 
-      setCurrentView={setCurrentView}
-      cartItemsCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-    >
-      {renderView()}
-    </Layout>
+    <>
+      <Layout 
+        currentView={currentView} 
+        setCurrentView={setCurrentView}
+        cartItemsCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+      >
+        {renderView()}
+      </Layout>
+      
+      {/* Уведомления (показываем на всех страницах) */}
+      <Notifications />
+      
+      {/* Кнопка запроса товара (показываем только на странице товаров) */}
+      {currentView === View.ITEMS && <RequestProduct />}
+    </>
   );
 };
 
