@@ -1,59 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, CheckCircle, XCircle, Package } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, X, CheckCircle, XCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { Notification } from '../types';
 
 const Notifications: React.FC = () => {
-  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useStore();
+  const { notifications } = useStore();
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
+  // Считаем непрочитанные уведомления
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // ✅ Автоматически помечать все уведомления как прочитанные при открытии меню
+  // Автоматически открываем меню при появлении новых уведомлений
   useEffect(() => {
-    if (isOpen && unreadCount > 0) {
-      markAllNotificationsAsRead();
+    if (unreadCount > 0 && !isOpen) {
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+        // Автоматически закрываем через 5 секунд
+        setTimeout(() => setIsOpen(false), 5000);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, unreadCount, markAllNotificationsAsRead]);
+  }, [unreadCount, isOpen]);
 
-  // ✅ Автоматически помечать уведомления при прокрутке (видимость)
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const notificationId = entry.target.getAttribute('data-notification-id');
-            if (notificationId && !entry.target.classList.contains('read')) {
-              markNotificationAsRead(notificationId);
-            }
-          }
-        });
-      },
-      { threshold: 0.5 } // 50% видимости
-    );
-
-    // Наблюдаем за каждым уведомлением
-    const notificationElements = document.querySelectorAll('[data-notification-id]');
-    notificationElements.forEach(el => observer.observe(el));
-
-    return () => observer.disconnect();
-  }, [isOpen, notifications, markNotificationAsRead]);
-
-  const getIcon = (type: Notification['type']) => {
+  const getIcon = (type: string) => {
     switch (type) {
       case 'order_confirmed':
-        return <CheckCircle size={20} className="text-green-500" />;
-      case 'order_rejected':
-        return <XCircle size={20} className="text-red-500" />;
-      case 'product_requested':
-        return <Package size={20} className="text-blue-500" />;
-      case 'product_request_approved':
-        return <CheckCircle size={20} className="text-green-500" />;
-      case 'product_request_rejected':
-        return <XCircle size={20} className="text-red-500" />;
+        return <CheckCircle size={20} className="text-emerald-500" />;
+      case 'order_canceled':
+        return <XCircle size={20} className="text-rose-500" />;
       default:
         return <Bell size={20} className="text-neutral-500" />;
     }
@@ -77,11 +50,10 @@ const Notifications: React.FC = () => {
       {/* Выпадающее меню уведомлений */}
       {isOpen && (
         <div 
-          ref={menuRef}
           className="absolute right-0 mt-2 w-80 bg-neutral-900 rounded-xl border border-neutral-800 shadow-xl max-h-[60vh] overflow-y-auto"
         >
           <div className="p-4 border-b border-neutral-800 flex justify-between items-center">
-            <h3 className="font-bold text-white">Notifications</h3>
+            <h3 className="font-bold text-white">Уведомления</h3>
             <button
               onClick={() => setIsOpen(false)}
               className="text-neutral-500 hover:text-white transition-colors"
@@ -92,22 +64,14 @@ const Notifications: React.FC = () => {
 
           {notifications.length === 0 ? (
             <div className="p-8 text-center text-neutral-500">
-              No notifications yet
+              Нет уведомлений
             </div>
           ) : (
             <div className="divide-y divide-neutral-800">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  data-notification-id={notification.id}
-                  className={`p-4 hover:bg-neutral-800/50 transition-colors cursor-pointer ${
-                    notification.read ? 'opacity-70' : 'bg-neutral-800/30'
-                  }`}
-                  onClick={() => {
-                    if (!notification.read) {
-                      markNotificationAsRead(notification.id);
-                    }
-                  }}
+                  className={`p-4 ${notification.read ? 'opacity-70' : 'bg-neutral-800/30'}`}
                 >
                   <div className="flex items-start gap-3">
                     <div className="mt-1">
@@ -117,10 +81,13 @@ const Notifications: React.FC = () => {
                       <div className="flex justify-between">
                         <h4 className="font-bold text-white">{notification.title}</h4>
                         <span className="text-xs text-neutral-500">
-                          {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(notification.createdAt).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
                         </span>
                       </div>
-                      <p className="text-sm text-neutral-400 mt-1">
+                      <p className="text-sm text-neutral-300 mt-1">
                         {notification.message}
                       </p>
                     </div>
