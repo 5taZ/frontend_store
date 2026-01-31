@@ -20,6 +20,7 @@ interface StoreContextType {
   addNotification: (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
   markNotificationAsRead: (notificationId: string) => void;
   requestProduct: (productName: string, quantity: number, image?: string) => Promise<void>;
+  processProductRequest: (requestId: string, approved: boolean) => Promise<void>;
   isAdmin: boolean;
   loading: boolean;
   refreshOrders: () => Promise<void>;
@@ -413,7 +414,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!user) return;
     
     try {
-      await api.requestProduct(user.id, productName, quantity, image);
+      const result = await api.requestProduct(user.id, productName, quantity, image);
       
       addNotification({
         type: 'product_requested',
@@ -428,18 +429,62 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           message: 'Your product request has been sent to the admin. You will be notified when it is processed.'
         });
       }
+      
+      await refreshProductRequests();
     } catch (error: any) {
       alert(`Failed to request product: ${error.message || 'Unknown error'}`);
     }
   }, [user, addNotification]);
+
+  const processProductRequest = useCallback(async (requestId: string, approved: boolean) => {
+    if (!isAdmin) return;
+    
+    try {
+      const status = approved ? 'approved' : 'rejected';
+      await api.processProductRequest(requestId, status as any);
+      
+      addNotification({
+        type: approved ? 'product_request_approved' : 'product_request_rejected',
+        title: approved ? 'Request Approved' : 'Request Rejected',
+        message: `Product request ${approved ? 'approved' : 'rejected'} successfully.`
+      });
+      
+      await refreshProductRequests();
+    } catch (error: any) {
+      alert(`Failed to process request: ${error.message || 'Unknown error'}`);
+    }
+  }, [isAdmin, addNotification]);
 
   const refreshNotifications = useCallback(async () => {
     // TODO: Загрузить уведомления с сервера
   }, []);
 
   const refreshProductRequests = useCallback(async () => {
-    // TODO: Загрузить запросы товаров с сервера
-  }, []);
+    if (!user) return;
+    
+    try {
+      let requestsData;
+      if (isAdmin) {
+        requestsData = await api.getProductRequests();
+      } else {
+        requestsData = await api.getUserProductRequests(user.id);
+      }
+      
+      setProductRequests(requestsData.map((r: any) => ({
+        id: r.id.toString(),
+        userId: r.userId,
+        username: r.username,
+        productName: r.productName,
+        quantity: r.quantity,
+        image: r.image,
+        status: r.status,
+        createdAt: r.createdAt,
+        processedAt: r.processedAt
+      })));
+    } catch (error) {
+      console.error('Failed to load product requests:', error);
+    }
+  }, [user, isAdmin]);
 
   return (
     <StoreContext.Provider
@@ -461,6 +506,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addNotification,
         markNotificationAsRead,
         requestProduct,
+        processProductRequest,
         isAdmin,
         loading,
         refreshOrders,
