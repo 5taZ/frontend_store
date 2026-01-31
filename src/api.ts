@@ -1,7 +1,5 @@
-// API client for backend communication
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// Получаем initData из Telegram WebApp
 const getInitData = (): string => {
   if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
     return (window as any).Telegram.WebApp.initData || '';
@@ -9,26 +7,15 @@ const getInitData = (): string => {
   return '';
 };
 
-// Получаем Telegram User из initDataUnsafe (для фолбэка)
-const getTelegramUser = () => {
-  if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-    return (window as any).Telegram.WebApp.initDataUnsafe?.user || null;
-  }
-  return null;
-};
-
 export const api = {
-  // User endpoints
   async getOrCreateUser(telegramId: number, username: string) {
-    const initData = getInitData();
-    
     const response = await fetch(`${API_BASE_URL}/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         telegram_id: telegramId, 
         username,
-        init_data: initData // ⬅️ Передаем для валидации на бэкенде
+        init_data: getInitData()
       })
     });
     
@@ -39,7 +26,6 @@ export const api = {
     return response.json();
   },
 
-  // Product endpoints
   async getProducts() {
     const response = await fetch(`${API_BASE_URL}/products`);
     if (!response.ok) throw new Error('Failed to fetch products');
@@ -52,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData() // Защита от подделки
+        init_data: getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -69,13 +55,9 @@ export const api = {
     return response.json();
   },
 
-  // Order endpoints
   async getAllOrders() {
-    // Для получения списка проверка initData менее критична, но можно добавить header
     const response = await fetch(`${API_BASE_URL}/orders`, {
-      headers: {
-        'X-Telegram-Init-Data': getInitData()
-      }
+      headers: { 'X-Telegram-Init-Data': getInitData() }
     });
     if (!response.ok) throw new Error('Failed to fetch orders');
     return response.json();
@@ -83,9 +65,7 @@ export const api = {
 
   async getUserOrders(userId: number) {
     const response = await fetch(`${API_BASE_URL}/orders/user/${userId}`, {
-      headers: {
-        'X-Telegram-Init-Data': getInitData()
-      }
+      headers: { 'X-Telegram-Init-Data': getInitData() }
     });
     if (!response.ok) throw new Error('Failed to fetch user orders');
     return response.json();
@@ -99,7 +79,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_data: getInitData() // ⬅️ Критически важно для защиты заказов
+        init_data: getInitData()
       })
     });
     if (!response.ok) {
@@ -109,16 +89,21 @@ export const api = {
     return response.json();
   },
 
-  async updateOrderStatus(orderId: string, status: string) {
+  // Универсальный метод для изменения статуса (отмена пользователем или обработка админом)
+  async updateOrderStatus(orderId: string, status: string, initData?: string, userId?: number) {
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: getInitData()
+        init_data: initData || getInitData(),
+        user_id: userId // Для проверки прав пользователя при отмене
       })
     });
-    if (!response.ok) throw new Error('Failed to update order status');
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to update order status');
+    }
     return response.json();
   }
 };
