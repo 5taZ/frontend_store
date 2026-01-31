@@ -17,6 +17,10 @@ const Notifications: React.FC = () => {
         return <XCircle size={20} className="text-red-500" />;
       case 'product_requested':
         return <Package size={20} className="text-blue-500" />;
+      case 'product_request_approved':
+        return <CheckCircle size={20} className="text-green-500" />;
+      case 'product_request_rejected':
+        return <XCircle size={20} className="text-red-500" />;
       default:
         return <Bell size={20} className="text-neutral-500" />;
     }
