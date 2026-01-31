@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { Product, CartItem, User, Order, OrderStatus, Notification, ProductRequest } from '../types';
+import { Product, CartItem, User, Order, OrderStatus, ProductRequest } from '../types';
 import { api } from '../api';
 
 interface StoreContextType {
@@ -7,7 +7,6 @@ interface StoreContextType {
   cart: CartItem[];
   user: User | null;
   orders: Order[];
-  notifications: Notification[];
   productRequests: ProductRequest[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
@@ -24,7 +23,6 @@ interface StoreContextType {
   loading: boolean;
   refreshOrders: () => Promise<void>;
   refreshProducts: () => Promise<void>;
-  refreshNotifications: () => Promise<void>;
   refreshProductRequests: () => Promise<void>;
 }
 
@@ -35,7 +33,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [cart, setCart] = useState<CartItem[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [productRequests, setProductRequests] = useState<ProductRequest[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -86,41 +83,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       await loadOrders(user.id, isAdmin);
     }
   }, [user, isAdmin, loadOrders]);
-
-  // ✅ НОВОЕ: Загрузка уведомлений с сервера
-  const refreshNotifications = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      const notificationsData = await api.getNotifications();
-      
-      setNotifications(notificationsData.map((n: any) => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        read: n.isRead,
-        createdAt: n.createdAt,
-        orderId: n.orderId
-      })));
-    } catch (error) {
-      console.error('Failed to load notifications:', error);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    
-    // Загружаем уведомления при инициализации
-    refreshNotifications();
-    
-    // Автообновление каждые 10 секунд
-    const interval = setInterval(() => {
-      refreshNotifications();
-    }, 10000);
-    
-    return () => clearInterval(interval);
-  }, [user, refreshNotifications]);
 
   useEffect(() => {
     if (!user) return;
@@ -540,7 +502,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         cart,
         user,
         orders,
-        notifications,
         productRequests,
         addToCart,
         removeFromCart,
@@ -557,7 +518,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         loading,
         refreshOrders,
         refreshProducts,
-        refreshNotifications,
         refreshProductRequests
       }}
     >
