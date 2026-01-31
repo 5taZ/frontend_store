@@ -1,8 +1,8 @@
-]export interface Product {
+export interface Product {
   id: string;
   name: string;
   price: number;
-  image: string; // Теперь это может быть base64 dataURL
+  image: string;
   description: string;
   category: string;
   inStock: boolean;
@@ -19,7 +19,7 @@ export interface User {
 }
 
 export enum View {
-  ITEMS = 'ITEMS',  // Вместо HOME и SEARCH
+  ITEMS = 'ITEMS',
   CART = 'CART',
   PROFILE = 'PROFILE',
   ADMIN = 'ADMIN'
