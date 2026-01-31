@@ -19,6 +19,7 @@ interface StoreContextType {
   processOrder: (orderId: string, approved: boolean) => Promise<void>;
   addNotification: (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
   markNotificationAsRead: (notificationId: string) => void;
+  markAllNotificationsAsRead: () => void;
   requestProduct: (productName: string, quantity: number, image?: string) => Promise<void>;
   processProductRequest: (requestId: string, approved: boolean) => Promise<void>;
   isAdmin: boolean;
@@ -410,6 +411,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     ));
   }, []);
 
+  // ✅ НОВОЕ: Пометить все уведомления как прочитанные
+  const markAllNotificationsAsRead = useCallback(() => {
+    setNotifications(prev => 
+      prev.map(notification => 
+        !notification.read ? { ...notification, read: true } : notification
+      )
+    );
+  }, []);
+
   const requestProduct = useCallback(async (productName: string, quantity: number, image?: string) => {
     if (!user) {
       console.error('❌ Cannot request product: no user');
@@ -524,6 +534,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         processOrder,
         addNotification,
         markNotificationAsRead,
+        markAllNotificationsAsRead,
         requestProduct,
         processProductRequest,
         isAdmin,
