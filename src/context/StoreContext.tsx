@@ -55,7 +55,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
-  // Загрузка продуктов (оптимизированная)
+  // Загрузка продуктов (оптимизированная) - с загрузкой quantity
   const refreshProducts = useCallback(async () => {
     try {
       const data = await api.getProducts();
@@ -66,7 +66,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         image: p.image,
         description: p.description,
         category: p.category,
-        inStock: p.in_stock
+        inStock: p.in_stock,
+        quantity: p.quantity || 1 // ✅ Загружаем quantity из БД
       })));
     } catch (error) {
       console.error('Failed to load products:', error);
@@ -165,6 +166,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
+        // Проверяем, достаточно ли товара на складе
+        const productInStock = products.find(p => p.id === product.id);
+        const maxAvailable = (productInStock?.quantity || 1) - existing.quantity;
+        
+        if (maxAvailable <= 0) {
+          // Нельзя добавить больше
+          return prev;
+        }
+        
         return prev.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
@@ -177,7 +187,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.impactOccurred('light');
     }
-  }, []);
+  }, [products]);
 
   const removeFromCart = useCallback((productId: string) => {
     setCart((prev) => prev.filter((item) => item.id !== productId));
@@ -203,7 +213,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         image: dbProduct.image,
         description: dbProduct.description,
         category: dbProduct.category,
-        inStock: dbProduct.in_stock
+        inStock: dbProduct.in_stock,
+        quantity: dbProduct.quantity || 1 // ✅ Сохраняем quantity
       } : p));
     } catch (error) {
       // Откат при ошибке
@@ -222,7 +233,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [refreshProducts]);
 
-  // ⚡ ОПТИМИСТИЧНО: Заказ создается мгновенно в UI
+  // ⚡ ОПТИМИСТИЧНО: Заказ создается мгновенно в UI (с логикой quantity)
   const placeOrder = useCallback(async () => {
     if (!user || cart.length === 0) return;
 
@@ -243,13 +254,29 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setOrders(prev => [optimisticOrder, ...prev]);
     setCart([]); // Сразу очищаем корзину
     
-    // 2. Убираем товары из каталога сразу (резервирование)
-    const purchasedIds = cart.map(item => item.id);
-    setProducts(prev => prev.filter(p => !purchasedIds.includes(p.id)));
+    // 2. Уменьшаем quantity товаров (НОВАЯ ЛОГИКА)
+    setProducts(prev => 
+      prev.map(p => {
+        const cartItem = cart.find(item => item.id === p.id);
+        if (cartItem) {
+          const newQuantity = (p.quantity || 1) - cartItem.quantity;
+          if (newQuantity <= 0) {
+            return null; // Удаляем товар если закончился
+          }
+          return { ...p, quantity: newQuantity };
+        }
+        return p;
+      }).filter(Boolean as any)
+    );
 
     try {
-      // 3. Отправляем на сервер в фоне
-      const dbOrder = await api.createOrder(user.id, cart, total);
+      // 3. Отправляем на сервер в фоне (преобразуем id в число!)
+      const cartItemsWithNumberId = cart.map(item => ({
+        ...item,
+        id: parseInt(item.id) // ✅ ИСПРАВЛЕНИЕ: преобразуем в число для сервера
+      }));
+      
+      const dbOrder = await api.createOrder(user.id, cartItemsWithNumberId, total);
       
       // 4. Обновляем на реальный ID
       setOrders(prev => prev.map(o => 
@@ -266,13 +293,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error) {
       // Откат при ошибке
       setOrders(prev => prev.filter(o => o.id !== tempOrderId));
-      setProducts(prev => [...cart, ...prev]); // Возвращаем товары
+      // Восстанавливаем товары с их количеством
+      setProducts(prev => {
+        const restored = [...prev];
+        cart.forEach(item => {
+          const existing = restored.find(p => p.id === item.id);
+          if (existing) {
+            existing.quantity = (existing.quantity || 0) + item.quantity;
+          } else {
+            restored.push({ ...item, quantity: item.quantity });
+          }
+        });
+        return restored;
+      });
       setCart(cart); // Возвращаем корзину
       alert('Failed to place order. Please try again.');
     }
   }, [user, cart]);
 
-  // ⚡ ОПТИМИСТИЧНО: Отмена заказа
+  // ⚡ ОПТИМИСТИЧНО: Отмена заказа (товары НЕ возвращаются)
   const cancelOrder = useCallback(async (orderId: string) => {
     if (!user) return;
     
@@ -284,8 +323,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       o.id === orderId ? { ...o, status: OrderStatus.CANCELED } : o
     ));
     
-    // Возвращаем товары сразу
-    setProducts(prev => [...originalOrder.items.map(i => ({ ...i, inStock: true })), ...prev]);
+    // ⚠️ ВАЖНО: Товары НЕ возвращаются при отмене (новая логика)
+    // Ничего не делаем с продуктами
 
     try {
       await api.updateOrderStatus(orderId, 'CANCELED', undefined, user.id);
@@ -294,12 +333,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setOrders(prev => prev.map(o => 
         o.id === orderId ? originalOrder : o
       ));
-      setProducts(prev => prev.filter(p => !originalOrder.items.some(i => i.id === p.id)));
+      // Товары не возвращаем, так как они уже удалены/уменьшены
       alert('Failed to cancel order');
     }
   }, [user, orders]);
 
-  // ⚡ ОПТИМИСТИЧНО: Обработка заказа админом
+  // ⚡ ОПТИМИСТИЧНО: Обработка заказа админом (товары НЕ возвращаются при отклонении)
   const processOrder = useCallback(async (orderId: string, approved: boolean) => {
     if (!isAdmin) return;
     
@@ -313,10 +352,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       o.id === orderId ? { ...o, status: newStatus } : o
     ));
 
-    // Если отмена - возвращаем товары сразу
-    if (!approved) {
-      setProducts(prev => [...originalOrder.items.map(i => ({ ...i, inStock: true })), ...prev]);
-    }
+    // ⚠️ ВАЖНО: Товары НЕ возвращаются при отклонении (новая логика)
+    // Ничего не делаем с продуктами
 
     try {
       const tg = (window as any).Telegram?.WebApp;
@@ -326,9 +363,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setOrders(prev => prev.map(o => 
         o.id === orderId ? originalOrder : o
       ));
-      if (!approved) {
-        setProducts(prev => prev.filter(p => !originalOrder.items.some(i => i.id === p.id)));
-      }
       throw error;
     }
   }, [isAdmin, orders]);
