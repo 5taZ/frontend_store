@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Trash2, Upload, Edit, Save, Box, XCircle, CheckCircle, Clock } from 'lucide-react';
+import { Plus, X, Trash2, Upload, Edit, Save, Box, XCircle, CheckCircle, Clock, Check } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus } from '../types';
 
@@ -136,6 +136,13 @@ const Admin: React.FC = () => {
     }
   };
 
+  // ✅ НОВОЕ: Отмена редактирования/добавления
+  const handleCancel = () => {
+    setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
+    setIsAdding(false);
+    setEditingProduct(null);
+  };
+
   const handleDeleteProduct = async (productId: string, productName: string) => {
     if (!confirm(`Delete "${productName}"?`)) return;
     try {
@@ -207,10 +214,9 @@ const Admin: React.FC = () => {
         <button 
           onClick={() => {
             setActiveTab(AdminTab.INVENTORY);
+            // При переключении на Inventory закрываем форму
             if (isAdding) {
-              setIsAdding(false);
-              setEditingProduct(null);
-              setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
+              handleCancel();
             }
           }}
           className={`flex-1 py-2 rounded-lg text-sm font-medium ${
@@ -227,32 +233,19 @@ const Admin: React.FC = () => {
             <h2 className="text-lg font-bold">Inventory</h2>
             <button 
               onClick={() => {
-                if (isAdding && editingProduct) {
-                  // Выходим из режима редактирования
+                // Если форма открыта - закрываем, если закрыта - открываем для добавления
+                if (isAdding) {
+                  handleCancel();
+                } else {
+                  setIsAdding(true);
                   setEditingProduct(null);
                   setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
-                } else {
-                  // Переключаем режим добавления/редактирования
-                  setIsAdding(!isAdding);
-                  if (!isAdding) {
-                    setEditingProduct(null);
-                    setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
-                  }
                 }
               }}
-              className="bg-red-600 p-2 rounded-lg flex items-center gap-2"
+              className="bg-red-600 p-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors"
             >
-              {isAdding ? (
-                <>
-                  <X size={20} />
-                  <span>Cancel</span>
-                </>
-              ) : (
-                <>
-                  <Plus size={20} />
-                  <span>Add Product</span>
-                </>
-              )}
+              <Plus size={20} />
+              <span>{isAdding ? 'Close Form' : 'Add Product'}</span>
             </button>
           </div>
 
@@ -261,7 +254,7 @@ const Admin: React.FC = () => {
               <input 
                 type="text" 
                 placeholder="Product Name"
-                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.name}
                 onChange={e => setFormState({...formState, name: e.target.value})}
                 required
@@ -269,7 +262,7 @@ const Admin: React.FC = () => {
               <input 
                 type="number" 
                 placeholder="Price (BYN)"
-                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.price}
                 onChange={e => setFormState({...formState, price: e.target.value})}
                 required
@@ -277,7 +270,7 @@ const Admin: React.FC = () => {
               <input 
                 type="number" 
                 placeholder="Quantity"
-                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.quantity}
                 onChange={e => setFormState({...formState, quantity: e.target.value})}
                 min="1"
@@ -286,7 +279,7 @@ const Admin: React.FC = () => {
               <input 
                 type="text" 
                 placeholder="Category"
-                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.category}
                 onChange={e => setFormState({...formState, category: e.target.value})}
               />
@@ -313,28 +306,30 @@ const Admin: React.FC = () => {
 
               <textarea 
                 placeholder="Description"
-                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white h-20"
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white h-20 focus:outline-none focus:border-red-600"
                 value={formState.description}
                 onChange={e => setFormState({...formState, description: e.target.value})}
               />
               
-              <button 
-                type="submit" 
-                disabled={uploading || !formState.image}
-                className="w-full bg-red-600 text-white font-bold py-3 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {editingProduct ? (
-                  <>
-                    <Save size={20} />
-                    <span>Save Changes</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus size={20} />
-                    <span>Add Product</span>
-                  </>
-                )}
-              </button>
+              {/* ✅ НОВОЕ: Кнопки галочка и крестик вместо одной кнопки */}
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={handleCancel}
+                  className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  <X size={20} />
+                  <span>Cancel</span>
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={uploading || !formState.image || !formState.name || !formState.price}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                >
+                  <Check size={20} />
+                  <span>{editingProduct ? 'Save Changes' : 'Add Product'}</span>
+                </button>
+              </div>
             </form>
           )}
 
