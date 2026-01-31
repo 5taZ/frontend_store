@@ -7,35 +7,31 @@ interface LayoutProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   cartItemsCount: number;
+  isAdmin: boolean; // Явно получаем isAdmin!
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurrentView, cartItemsCount }) => {
+const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurrentView, cartItemsCount, isAdmin }) => {
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-800 px-4 py-3">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight" style={{ fontFamily: 'Rubik, sans-serif' }}>
-            Rubik
+          <h1 className="text-xl font-bold" style={{ fontFamily: 'Rubik, sans-serif' }}>
+            NextGear
           </h1>
-          <div className="flex items-center gap-2">
-            {cartItemsCount > 0 && (
-              <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {cartItemsCount}
-              </span>
-            )}
-          </div>
+          {cartItemsCount > 0 && (
+            <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+              {cartItemsCount}
+            </span>
+          )}
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-lg mx-auto pb-20">
         {children}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 pb-safe">
-        <div className="max-w-lg mx-auto grid grid-cols-4 h-16">
+      <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800">
+        <div className={`max-w-lg mx-auto grid ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} h-16`}>
           <button
             onClick={() => setCurrentView(View.ITEMS)}
             className={`flex flex-col items-center justify-center space-y-1 ${
@@ -66,15 +62,18 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setCurrentView, 
             <span className="text-[10px] font-medium">Profile</span>
           </button>
           
-          <button
-            onClick={() => setCurrentView(View.ADMIN)}
-            className={`flex flex-col items-center justify-center space-y-1 ${
-              currentView === View.ADMIN ? 'text-red-500' : 'text-neutral-500'
-            }`}
-          >
-            <Package size={24} />
-            <span className="text-[10px] font-medium">Admin</span>
-          </button>
+          {/* КНОПКА ADMIN ТОЛЬКО ДЛЯ АДМИНА! */}
+          {isAdmin && (
+            <button
+              onClick={() => setCurrentView(View.ADMIN)}
+              className={`flex flex-col items-center justify-center space-y-1 ${
+                currentView === View.ADMIN ? 'text-red-500' : 'text-neutral-500'
+              }`}
+            >
+              <Package size={24} />
+              <span className="text-[10px] font-medium">Admin</span>
+            </button>
+          )}
         </div>
       </nav>
     </div>
