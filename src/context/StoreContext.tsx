@@ -14,6 +14,7 @@ interface StoreContextType {
   clearCart: () => void;
   addProduct: (product: Product) => Promise<void>;
   removeProduct: (productId: string) => Promise<void>;
+  updateProduct: (productId: string, product: Partial<Product>) => Promise<void>;
   placeOrder: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   processOrder: (orderId: string, approved: boolean) => Promise<void>;
@@ -231,6 +232,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [refreshProducts]);
 
+  // ✅ НОВОЕ: Обновление товара
+  const updateProduct = useCallback(async (productId: string, product: Partial<Product>) => {
+    // Оптимистично обновляем в UI
+    setProducts(prev => prev.map(p => 
+      p.id === productId ? { ...p, ...product } : p
+    ));
+    
+    try {
+      await api.updateProduct(productId, product);
+    } catch (error) {
+      // Откат при ошибке
+      refreshProducts();
+      throw error;
+    }
+  }, [refreshProducts]);
+
   const placeOrder = useCallback(async () => {
     if (!user || cart.length === 0) {
       console.warn('⚠️ Cannot place order: no user or empty cart');
@@ -411,7 +428,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     ));
   }, []);
 
-  // ✅ НОВОЕ: Пометить все уведомления как прочитанные
   const markAllNotificationsAsRead = useCallback(() => {
     setNotifications(prev => 
       prev.map(notification => 
@@ -529,6 +545,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         clearCart,
         addProduct,
         removeProduct,
+        updateProduct,
         placeOrder,
         cancelOrder,
         processOrder,
