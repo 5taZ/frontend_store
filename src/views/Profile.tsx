@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CheckCircle, XCircle, Package, Ban } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Package, Ban, Bell } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus } from '../types';
 
@@ -12,27 +12,27 @@ const Profile: React.FC = () => {
     .filter(order => order.userId === user.id)
     .sort((a, b) => b.date - a.date);
 
-  // Возвращаем иконку и стили для каждого статуса
+  // Возвращаем иконку и стили для каждого статуса (БОЛЕЕ МЯГКИЕ ЦВЕТА)
   const getStatusConfig = (status: OrderStatus) => {
     switch (status) {
       case OrderStatus.CONFIRMED:
         return {
           icon: <CheckCircle size={16} className="text-green-500" />,
-          badgeClass: 'bg-green-900/30 text-green-500 border-green-500/30',
+          badgeClass: 'bg-green-500/10 border-green-500/20', // ✅ Мягкий зелёный
           label: 'Подтверждено',
           color: 'text-green-500'
         };
       case OrderStatus.CANCELED:
         return {
           icon: <XCircle size={16} className="text-red-500" />,
-          badgeClass: 'bg-red-900/30 text-red-500 border-red-500/30',
+          badgeClass: 'bg-red-500/10 border-red-500/20', // ✅ Мягкий красный
           label: 'Отклонено',
           color: 'text-red-500'
         };
       default: // PENDING
         return {
           icon: <Clock size={16} className="text-yellow-500" />,
-          badgeClass: 'bg-yellow-900/30 text-yellow-500 border-yellow-500/30',
+          badgeClass: 'bg-yellow-500/10 border-yellow-500/20', // ✅ Мягкий жёлтый
           label: 'Ожидание',
           color: 'text-yellow-500'
         };
@@ -41,16 +41,23 @@ const Profile: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 pb-24">
-      <div className="flex items-center space-x-4">
-        <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold">
-          {user.username.charAt(0).toUpperCase()}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold">
+            {user.username.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">@{user.username}</h2>
+            <span className={`text-xs px-2 py-1 rounded ${user.isAdmin ? 'bg-red-600' : 'bg-neutral-800'}`}>
+              {user.isAdmin ? 'Admin' : 'Member'}
+            </span>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold">@{user.username}</h2>
-          <span className={`text-xs px-2 py-1 rounded ${user.isAdmin ? 'bg-red-600' : 'bg-neutral-800'}`}>
-            {user.isAdmin ? 'Admin' : 'Member'}
-          </span>
-        </div>
+        
+        {/* Колокольчик уведомлений (пока заглушка) */}
+        <button className="p-2 text-neutral-400 hover:text-white transition-colors">
+          <Bell size={24} />
+        </button>
       </div>
 
       <div>
@@ -66,7 +73,7 @@ const Profile: React.FC = () => {
             return (
               <div 
                 key={order.id} 
-                className={`rounded-xl p-4 border ${statusConfig.badgeClass}`}
+                className={`rounded-xl p-4 border ${statusConfig.badgeClass} hover:shadow-lg transition-shadow`}
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
