@@ -246,20 +246,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     console.log('✅ Cart cleared, optimistic order added');
     
+    // ✅ ИСПРАВЛЕНО: Используем filter с типовым предикатом
     setProducts(prev => {
-      const updated = prev.map(p => {
-        const cartItem = cart.find(item => item.id === p.id);
-        if (cartItem) {
-          const newQuantity = (p.quantity || 1) - cartItem.quantity;
-          console.log(`📦 Product ${p.name}: ${p.quantity} → ${newQuantity}`);
-          if (newQuantity <= 0) {
-            console.log(`🗑️ Product ${p.name} removed (quantity <= 0)`);
-            return null;
+      const updated = prev
+        .map(p => {
+          const cartItem = cart.find(item => item.id === p.id);
+          if (cartItem) {
+            const newQuantity = (p.quantity || 1) - cartItem.quantity;
+            console.log(`📦 Product ${p.name}: ${p.quantity} → ${newQuantity}`);
+            if (newQuantity <= 0) {
+              console.log(`🗑️ Product ${p.name} removed (quantity <= 0)`);
+              return null;
+            }
+            return { ...p, quantity: newQuantity };
           }
-          return { ...p, quantity: newQuantity };
-        }
-        return p;
-      }).filter(Boolean as any);
+          return p;
+        })
+        .filter((p): p is Product => p !== null);
       
       console.log(`✅ Products updated: ${updated.length} items remaining`);
       return updated;
@@ -313,6 +316,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return filtered;
       });
       
+      // ✅ ИСПРАВЛЕНО: Восстановление товаров без ошибки типизации
       setProducts(prev => {
         const restored = [...prev];
         console.log('🔄 Restoring products...');
