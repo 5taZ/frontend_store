@@ -42,9 +42,10 @@ export interface Order {
   date: number;
 }
 
+// ✅ Уведомления
 export interface Notification {
   id: string;
-  type: 'order_confirmed' | 'order_rejected' | 'product_requested';
+  type: 'order_confirmed' | 'order_rejected' | 'product_requested' | 'product_request_approved' | 'product_request_rejected';
   title: string;
   message: string;
   read: boolean;
@@ -52,6 +53,7 @@ export interface Notification {
   orderId?: string;
 }
 
+// ✅ Запросы на товары
 export interface ProductRequest {
   id: string;
   userId: number;
@@ -61,6 +63,7 @@ export interface ProductRequest {
   image?: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number;
+  processedAt?: number;
 }
 
 export const ADMIN_TELEGRAM_USERNAME = "next_gear_manager";
