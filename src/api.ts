@@ -15,7 +15,7 @@ export const api = {
       body: JSON.stringify({ 
         telegram_id: telegramId, 
         username,
-        init_ getInitData()
+        init_data: getInitData()  // ← исправлено: добавлено двоеточие
       })
     });
     
@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_ getInitData()
+        init_data: getInitData()  // ← исправлено
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -49,13 +49,12 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_ getInitData() })
+      body: JSON.stringify({ init_data: getInitData() })  // ← исправлено
     });
     if (!response.ok) throw new Error('Failed to delete product');
     return response.json();
   },
 
-  // ✅ НОВОЕ: Обновление товара
   async updateProduct(productId: string, product: Partial<any>) {
     console.log('📡 API updateProduct called:', { productId, product });
     
@@ -69,7 +68,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_ getInitData()
+        init_data: getInitData()  // ← исправлено
       })
     });
     
@@ -112,7 +111,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_ getInitData()
+        init_data: getInitData()  // ← исправлено
       })
     });
     
@@ -135,7 +134,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_ initData || getInitData(),
+        init_data: initData || getInitData(),  // ← исправлено: было init_ initData
         user_id: userId
       })
     });
@@ -146,7 +145,6 @@ export const api = {
     return response.json();
   },
 
-  // ✅ Запрос товара
   async requestProduct(userId: number, productName: string, quantity: number, image?: string) {
     console.log('📡 API requestProduct called:', { userId, productName, quantity, image });
     
@@ -161,7 +159,7 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_ initData
+        init_data: initData  // ← исправлено: было init_ initData
       })
     });
     
@@ -178,7 +176,6 @@ export const api = {
     return data;
   },
 
-  // ✅ Получение всех запросов (для админа)
   async getProductRequests() {
     const response = await fetch(`${API_BASE_URL}/product-requests`, {
       headers: { 'X-Telegram-Init-Data': getInitData() }
@@ -187,7 +184,6 @@ export const api = {
     return response.json();
   },
 
-  // ✅ Получение запросов пользователя
   async getUserProductRequests(userId: number) {
     const response = await fetch(`${API_BASE_URL}/product-requests/user/${userId}`, {
       headers: { 'X-Telegram-Init-Data': getInitData() }
@@ -196,14 +192,13 @@ export const api = {
     return response.json();
   },
 
-  // ✅ Обработка запроса (одобрение/отклонение)
   async processProductRequest(requestId: string, status: 'approved' | 'rejected') {
     const response = await fetch(`${API_BASE_URL}/product-requests/${requestId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_ getInitData()
+        init_data: getInitData()  // ← исправлено
       })
     });
     if (!response.ok) {
