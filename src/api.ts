@@ -55,11 +55,10 @@ export const api = {
     return response.json();
   },
 
-  // ✅ НОВОЕ: Обновление товара с логированием и преобразованием quantity
+  // ✅ НОВОЕ: Обновление товара
   async updateProduct(productId: string, product: Partial<any>) {
     console.log('📡 API updateProduct called:', { productId, product });
     
-    // ✅ ИСПРАВЛЕНО: Убедимся, что quantity - число
     if (product.quantity !== undefined && typeof product.quantity !== 'number') {
       console.warn('⚠️ API: Quantity is not a number, converting:', product.quantity);
       product = { ...product, quantity: Number(product.quantity) };
@@ -211,6 +210,15 @@ export const api = {
       const error = await response.text();
       throw new Error(error || 'Failed to process product request');
     }
+    return response.json();
+  },
+
+  // ✅ НОВОЕ: Получение уведомлений пользователя
+  async getNotifications() {
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      headers: { 'X-Telegram-Init-Data': getInitData() }
+    });
+    if (!response.ok) throw new Error('Failed to fetch notifications');
     return response.json();
   },
 };
