@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -49,9 +49,23 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_data: getInitData() })
+      body: JSON.stringify({ init_ getInitData() })
     });
     if (!response.ok) throw new Error('Failed to delete product');
+    return response.json();
+  },
+
+  // ✅ НОВОЕ: Обновление товара
+  async updateProduct(productId: string, product: Partial<any>) {
+    const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...product,
+        init_ getInitData()
+      })
+    });
+    if (!response.ok) throw new Error('Failed to update product');
     return response.json();
   },
 
@@ -81,7 +95,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -104,7 +118,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: initData || getInitData(),
+        init_ initData || getInitData(),
         user_id: userId
       })
     });
@@ -130,7 +144,7 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_data: initData
+        init_ initData
       })
     });
     
@@ -172,7 +186,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     if (!response.ok) {
