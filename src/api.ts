@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -81,7 +81,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     
@@ -130,7 +130,7 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_ initData
+        init_data: initData
       })
     });
     
@@ -172,7 +172,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     if (!response.ok) {
