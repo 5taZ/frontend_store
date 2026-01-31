@@ -8,7 +8,7 @@ import Admin from './views/Admin';
 import { View } from './types';
 
 const AppContent: React.FC = () => {
-  const { user, cart, isAdmin } = useStore(); // Достаем isAdmin здесь
+  const { user, cart } = useStore();
   const [currentView, setCurrentView] = useState<View>(View.ITEMS);
 
   if (!user) {
@@ -23,8 +23,7 @@ const AppContent: React.FC = () => {
   }
 
   const renderView = () => {
-    // Защита: если не админ пытается зайти в Admin, редирект на Items
-    if (currentView === View.ADMIN && !isAdmin) {
+    if (currentView === View.ADMIN && !user.isAdmin) {
       return <Items />;
     }
     
@@ -36,7 +35,7 @@ const AppContent: React.FC = () => {
       case View.PROFILE:
         return <Profile />;
       case View.ADMIN:
-        return isAdmin ? <Admin /> : <Items />;
+        return user.isAdmin ? <Admin /> : <Items />;
       default:
         return <Items />;
     }
@@ -47,7 +46,6 @@ const AppContent: React.FC = () => {
       currentView={currentView} 
       setCurrentView={setCurrentView}
       cartItemsCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-      isAdmin={isAdmin} // Передаем isAdmin в Layout!
     >
       {renderView()}
     </Layout>
