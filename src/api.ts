@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -81,7 +81,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -94,7 +94,7 @@ export const api = {
     }
     
     const data = await response.json();
-    console.log('✅ API response data:', data);
+    console.log('✅ API response ', data);
     return data;
   },
 
@@ -117,6 +117,11 @@ export const api = {
 
   // ✅ Запрос товара
   async requestProduct(userId: number, productName: string, quantity: number, image?: string) {
+    console.log('📡 API requestProduct called:', { userId, productName, quantity, image });
+    
+    const initData = getInitData();
+    console.log('📡 Telegram init ', initData ? 'Present' : 'Missing');
+    
     const response = await fetch(`${API_BASE_URL}/product-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -125,16 +130,21 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_data: getInitData()
+        init_ initData
       })
     });
     
+    console.log('📡 API response status:', response.status);
+    
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Failed to request product');
+      const errorText = await response.text();
+      console.error('❌ API error response:', errorText);
+      throw new Error(errorText || 'Failed to request product');
     }
     
-    return response.json();
+    const data = await response.json();
+    console.log('✅ API response ', data);
+    return data;
   },
 
   // ✅ Получение всех запросов (для админа)
@@ -162,7 +172,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     if (!response.ok) {
