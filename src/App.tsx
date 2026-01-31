@@ -6,7 +6,6 @@ import Cart from './views/Cart';
 import Profile from './views/Profile';
 import Admin from './views/Admin';
 import Notifications from './components/Notifications';
-import RequestProduct from './views/RequestProduct';
 import { View } from './types';
 
 const AppContent: React.FC = () => {
@@ -55,9 +54,6 @@ const AppContent: React.FC = () => {
       
       {/* Уведомления (показываем на всех страницах) */}
       <Notifications />
-      
-      {/* Кнопка запроса товара (показываем только на странице товаров) */}
-      {currentView === View.ITEMS && <RequestProduct />}
     </>
   );
 };
