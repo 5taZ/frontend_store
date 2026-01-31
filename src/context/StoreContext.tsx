@@ -410,51 +410,50 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     ));
   }, []);
 
-const requestProduct = useCallback(async (productName: string, quantity: number, image?: string) => {
-  if (!user) {
-    console.error('❌ Cannot request product: no user');
-    alert('You must be logged in to request a product');
-    return;
-  }
-  
-  try {
-    console.log('📤 Sending product request:', { 
-      userId: user.id, 
-      productName, 
-      quantity, 
-      image,
-      hasInitData: !!getInitData()
-    });
-    
-    const result = await api.requestProduct(user.id, productName, quantity, image);
-    
-    console.log('✅ Product request successful:', result);
-    
-    addNotification({
-      type: 'product_requested',
-      title: 'Product Requested',
-      message: `Your request for "${productName}" has been sent to admin.`
-    });
-    
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.showPopup) {
-      tg.showPopup({
-        title: 'Request Sent',
-        message: 'Your product request has been sent to the admin. You will be notified when it is processed.'
-      });
+  const requestProduct = useCallback(async (productName: string, quantity: number, image?: string) => {
+    if (!user) {
+      console.error('❌ Cannot request product: no user');
+      alert('You must be logged in to request a product');
+      return;
     }
     
-    await refreshProductRequests();
-    
-    console.log('✅ Product request flow completed');
-  } catch (error: any) {
-    console.error('❌ Product request error:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    alert(`Failed to request product: ${error.message || 'Unknown error'}`);
-  }
-}, [user, addNotification]);
+    try {
+      console.log('📤 Sending product request:', { 
+        userId: user.id, 
+        productName, 
+        quantity, 
+        image
+      });
+      
+      const result = await api.requestProduct(user.id, productName, quantity, image);
+      
+      console.log('✅ Product request successful:', result);
+      
+      addNotification({
+        type: 'product_requested',
+        title: 'Product Requested',
+        message: `Your request for "${productName}" has been sent to admin.`
+      });
+      
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.showPopup) {
+        tg.showPopup({
+          title: 'Request Sent',
+          message: 'Your product request has been sent to the admin. You will be notified when it is processed.'
+        });
+      }
+      
+      await refreshProductRequests();
+      
+      console.log('✅ Product request flow completed');
+    } catch (error: any) {
+      console.error('❌ Product request error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      alert(`Failed to request product: ${error.message || 'Unknown error'}`);
+    }
+  }, [user, addNotification]);
 
   const processProductRequest = useCallback(async (requestId: string, approved: boolean) => {
     if (!isAdmin) return;
