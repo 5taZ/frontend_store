@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { Product, CartItem, User, Order, OrderStatus } from '../types';
+import { Product, CartItem, User, Order, OrderStatus, Notification, ProductRequest } from '../types';
 import { api } from '../api';
 
 interface StoreContextType {
@@ -7,6 +7,8 @@ interface StoreContextType {
   cart: CartItem[];
   user: User | null;
   orders: Order[];
+  notifications: Notification[];
+  productRequests: ProductRequest[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
@@ -15,10 +17,15 @@ interface StoreContextType {
   placeOrder: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   processOrder: (orderId: string, approved: boolean) => Promise<void>;
+  addNotification: (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
+  markNotificationAsRead: (notificationId: string) => void;
+  requestProduct: (productName: string, quantity: number, image?: string) => Promise<void>;
   isAdmin: boolean;
   loading: boolean;
   refreshOrders: () => Promise<void>;
   refreshProducts: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
+  refreshProductRequests: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -28,6 +35,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [cart, setCart] = useState<CartItem[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [productRequests, setProductRequests] = useState<ProductRequest[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -246,7 +255,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     console.log('✅ Cart cleared, optimistic order added');
     
-    // ✅ ИСПРАВЛЕНО: Используем filter с типовым предикатом
     setProducts(prev => {
       const updated = prev
         .map(p => {
@@ -316,7 +324,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return filtered;
       });
       
-      // ✅ ИСПРАВЛЕНО: Восстановление товаров без ошибки типизации
       setProducts(prev => {
         const restored = [...prev];
         console.log('🔄 Restoring products...');
@@ -386,6 +393,54 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [isAdmin, orders]);
 
+  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: Date.now().toString(),
+      read: false,
+      createdAt: Date.now()
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+  }, []);
+
+  const markNotificationAsRead = useCallback((notificationId: string) => {
+    setNotifications(prev => prev.map(n => 
+      n.id === notificationId ? { ...n, read: true } : n
+    ));
+  }, []);
+
+  const requestProduct = useCallback(async (productName: string, quantity: number, image?: string) => {
+    if (!user) return;
+    
+    try {
+      await api.requestProduct(user.id, productName, quantity, image);
+      
+      addNotification({
+        type: 'product_requested',
+        title: 'Product Requested',
+        message: `Your request for "${productName}" has been sent to admin.`
+      });
+      
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.showPopup) {
+        tg.showPopup({
+          title: 'Request Sent',
+          message: 'Your product request has been sent to the admin. You will be notified when it is processed.'
+        });
+      }
+    } catch (error: any) {
+      alert(`Failed to request product: ${error.message || 'Unknown error'}`);
+    }
+  }, [user, addNotification]);
+
+  const refreshNotifications = useCallback(async () => {
+    // TODO: Загрузить уведомления с сервера
+  }, []);
+
+  const refreshProductRequests = useCallback(async () => {
+    // TODO: Загрузить запросы товаров с сервера
+  }, []);
+
   return (
     <StoreContext.Provider
       value={{
@@ -393,6 +448,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         cart,
         user,
         orders,
+        notifications,
+        productRequests,
         addToCart,
         removeFromCart,
         clearCart,
@@ -401,10 +458,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         placeOrder,
         cancelOrder,
         processOrder,
+        addNotification,
+        markNotificationAsRead,
+        requestProduct,
         isAdmin,
         loading,
         refreshOrders,
-        refreshProducts
+        refreshProducts,
+        refreshNotifications,
+        refreshProductRequests
       }}
     >
       {children}
