@@ -72,6 +72,8 @@ export const api = {
   },
 
   async createOrder(userId: number, items: any[], totalAmount: number) {
+    console.log('📡 API createOrder called:', { userId, itemsCount: items.length, totalAmount });
+    
     const response = await fetch(`${API_BASE_URL}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,14 +84,20 @@ export const api = {
         init_data: getInitData()
       })
     });
+    
+    console.log('📡 API response status:', response.status);
+    
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Failed to create order');
+      const errorText = await response.text();
+      console.error('❌ API error response:', errorText);
+      throw new Error(errorText || 'Failed to create order');
     }
-    return response.json();
+    
+    const data = await response.json();
+    console.log('✅ API response data:', data);
+    return data;
   },
 
-  // Универсальный метод для изменения статуса (отмена пользователем или обработка админом)
   async updateOrderStatus(orderId: string, status: string, initData?: string, userId?: number) {
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
       method: 'PATCH',
@@ -97,7 +105,7 @@ export const api = {
       body: JSON.stringify({ 
         status,
         init_data: initData || getInitData(),
-        user_id: userId // Для проверки прав пользователя при отмене
+        user_id: userId
       })
     });
     if (!response.ok) {
