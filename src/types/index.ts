@@ -42,16 +42,7 @@ export interface Order {
   date: number;
 }
 
-// ✅ Уведомления
-export interface Notification {
-  id: string;
-  type: 'order_confirmed' | 'order_rejected' | 'product_requested' | 'product_request_approved' | 'product_request_rejected';
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: number;
-  orderId?: string;
-}
+// ✅ УДАЛЕНО: Интерфейс уведомлений
 
 // ✅ Запросы на товары
 export interface ProductRequest {
