@@ -9,17 +9,14 @@ const Cart: React.FC = () => {
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
-
     placeOrder();
 
     const tg = (window as any).Telegram?.WebApp;
-    if (tg && tg.showPopup) {
+    if (tg?.showPopup) {
       tg.showPopup({ 
         title: 'Order Placed', 
         message: 'Your order has been sent. Items reserved awaiting confirmation.' 
       });
-    } else {
-      alert("Order placed! Items reserved awaiting confirmation.");
     }
   };
 
@@ -42,14 +39,16 @@ const Cart: React.FC = () => {
       <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-4">
         {cart.map((item) => (
           <div key={item.id} className="bg-neutral-900 p-4 rounded-xl flex items-center space-x-4 border border-neutral-800">
-            <img 
-              src={item.image} 
-              alt={item.name} 
-              className="w-16 h-16 rounded-lg object-cover bg-neutral-800"
-            />
+            {item.image ? (
+              <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover bg-neutral-800" />
+            ) : (
+              <div className="w-16 h-16 rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-600 text-xs">
+                No Img
+              </div>
+            )}
             <div className="flex-1">
               <h3 className="text-sm font-bold text-white">{item.name}</h3>
-              <p className="text-xs text-neutral-400 mt-1">Quantity: {item.quantity}</p>
+              <p className="text-xs text-neutral-400 mt-1">Qty: {item.quantity}</p>
               <div className="text-white font-bold mt-1">{item.price} BYN</div>
             </div>
             <button
