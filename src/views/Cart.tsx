@@ -10,14 +10,6 @@ const Cart: React.FC = () => {
   const handleCheckout = () => {
     if (cart.length === 0) return;
     placeOrder();
-
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.showPopup) {
-      tg.showPopup({ 
-        title: 'Order Placed', 
-        message: 'Your order has been sent. Items reserved awaiting confirmation.' 
-      });
-    }
   };
 
   if (cart.length === 0) {
