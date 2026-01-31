@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Check, Ban, Package, ClipboardList, Trash2, Upload, Box, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, X, Trash2, Upload, Edit, Save } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { OrderStatus } from '../types';
 
 // ТВОЙ CLOUDINARY (безопасно, т.к. unsigned preset только для загрузки фото)
 const CLOUDINARY_CLOUD_NAME = 'dpghjapcd';
@@ -10,20 +9,22 @@ const CLOUDINARY_UPLOAD_PRESET = 'nextgear_unsigned';
 enum AdminTab {
   INVENTORY = 'INVENTORY',
   ORDERS = 'ORDERS',
-  PRODUCT_REQUESTS = 'PRODUCT_REQUESTS' // ✅ НОВЫЙ ТАБ
+  PRODUCT_REQUESTS = 'PRODUCT_REQUESTS'
 }
 
 const Admin: React.FC = () => {
-  const { products, addProduct, removeProduct, orders, processOrder, productRequests, processProductRequest, refreshProductRequests } = useStore();
+  const { products, addProduct, removeProduct, updateProduct, orders, processOrder, productRequests, processProductRequest, refreshProductRequests } = useStore();
   const [activeTab, setActiveTab] = useState<AdminTab>(AdminTab.ORDERS);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
   const pendingOrders = orders.filter(o => o.status === OrderStatus.PENDING);
   const pendingRequests = productRequests.filter(r => r.status === 'pending');
 
-  const [newItem, setNewItem] = useState({
+  const [formState, setFormState] = useState({
+    id: '',
     name: '',
     price: '',
     image: '',
@@ -77,7 +78,7 @@ const Admin: React.FC = () => {
       const data = await response.json();
       if (data.secure_url) {
         const optimizedUrl = data.secure_url.replace('/upload/', '/upload/w_800,q_auto/');
-        setNewItem(prev => ({ ...prev, image: optimizedUrl }));
+        setFormState(prev => ({ ...prev, image: optimizedUrl }));
         setNotification({ message: 'Image uploaded!', type: 'success' });
       } else {
         throw new Error('Upload failed');
@@ -90,24 +91,48 @@ const Admin: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItem.name || !newItem.price) return;
+    
+    if (!formState.name || !formState.price) {
+      alert('Please fill in all required fields');
+      return;
+    }
 
-    addProduct({
-      id: Date.now().toString(),
-      name: newItem.name,
-      price: Number(newItem.price),
-      image: newItem.image,
-      category: newItem.category || 'General',
-      description: newItem.description || 'No description',
-      inStock: true,
-      quantity: Number(newItem.quantity) || 1
-    });
-
-    setNewItem({ name: '', price: '', image: '', category: '', description: '', quantity: '1' });
-    setIsAdding(false);
-    setNotification({ message: 'Item added', type: 'success' });
+    try {
+      if (editingProduct) {
+        // Редактирование существующего товара
+        await updateProduct(editingProduct, {
+          name: formState.name,
+          price: Number(formState.price),
+          image: formState.image,
+          category: formState.category || 'General',
+          description: formState.description || 'No description',
+          quantity: Number(formState.quantity) || 1
+        });
+        setNotification({ message: 'Product updated!', type: 'success' });
+      } else {
+        // Добавление нового товара
+        await addProduct({
+          id: Date.now().toString(),
+          name: formState.name,
+          price: Number(formState.price),
+          image: formState.image,
+          category: formState.category || 'General',
+          description: formState.description || 'No description',
+          inStock: true,
+          quantity: Number(formState.quantity) || 1
+        });
+        setNotification({ message: 'Product added!', type: 'success' });
+      }
+      
+      // Сброс формы
+      setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
+      setIsAdding(false);
+      setEditingProduct(null);
+    } catch (error) {
+      setNotification({ message: 'Failed to save product', type: 'error' });
+    }
   };
 
   const handleDeleteProduct = async (productId: string, productName: string) => {
@@ -120,6 +145,21 @@ const Admin: React.FC = () => {
     }
   };
 
+  // ✅ НОВОЕ: Начать редактирование товара
+  const handleEditProduct = (product: any) => {
+    setFormState({
+      id: product.id,
+      name: product.name,
+      price: product.price.toString(),
+      image: product.image || '',
+      category: product.category || '',
+      description: product.description || '',
+      quantity: (product.quantity || 1).toString()
+    });
+    setEditingProduct(product.id);
+    setIsAdding(true);
+  };
+
   const handleProcessOrder = (orderId: string, approved: boolean) => {
     processOrder(orderId, approved);
     setNotification({
@@ -128,7 +168,6 @@ const Admin: React.FC = () => {
     });
   };
 
-  // ✅ НОВОЕ: Обработка запроса на товар
   const handleProcessProductRequest = (requestId: string, approved: boolean) => {
     processProductRequest(requestId, approved);
     setNotification({
@@ -165,7 +204,14 @@ const Admin: React.FC = () => {
           Product Requests ({pendingRequests.length})
         </button>
         <button 
-          onClick={() => setActiveTab(AdminTab.INVENTORY)}
+          onClick={() => {
+            setActiveTab(AdminTab.INVENTORY);
+            if (isAdding) {
+              setIsAdding(false);
+              setEditingProduct(null);
+              setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
+            }
+          }}
           className={`flex-1 py-2 rounded-lg text-sm font-medium ${
             activeTab === AdminTab.INVENTORY ? 'bg-neutral-800 text-white' : 'text-neutral-500'
           }`}
@@ -175,15 +221,37 @@ const Admin: React.FC = () => {
       </div>
 
       {activeTab === AdminTab.INVENTORY ? (
-        // ... (код инвентаря без изменений) ...
         <>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">Inventory</h2>
             <button 
-              onClick={() => setIsAdding(!isAdding)}
-              className="bg-red-600 p-2 rounded-lg"
+              onClick={() => {
+                if (isAdding && editingProduct) {
+                  // Выходим из режима редактирования
+                  setEditingProduct(null);
+                  setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
+                } else {
+                  // Переключаем режим добавления/редактирования
+                  setIsAdding(!isAdding);
+                  if (!isAdding) {
+                    setEditingProduct(null);
+                    setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
+                  }
+                }
+              }}
+              className="bg-red-600 p-2 rounded-lg flex items-center gap-2"
             >
-              {isAdding ? <X size={20} /> : <Plus size={20} />}
+              {isAdding ? (
+                <>
+                  <X size={20} />
+                  <span>Cancel</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={20} />
+                  <span>Add Product</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -193,24 +261,24 @@ const Admin: React.FC = () => {
                 type="text" 
                 placeholder="Product Name"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
-                value={newItem.name}
-                onChange={e => setNewItem({...newItem, name: e.target.value})}
+                value={formState.name}
+                onChange={e => setFormState({...formState, name: e.target.value})}
                 required
               />
               <input 
                 type="number" 
                 placeholder="Price (BYN)"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
-                value={newItem.price}
-                onChange={e => setNewItem({...newItem, price: e.target.value})}
+                value={formState.price}
+                onChange={e => setFormState({...formState, price: e.target.value})}
                 required
               />
               <input 
                 type="number" 
                 placeholder="Quantity"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
-                value={newItem.quantity}
-                onChange={e => setNewItem({...newItem, quantity: e.target.value})}
+                value={formState.quantity}
+                onChange={e => setFormState({...formState, quantity: e.target.value})}
                 min="1"
                 required
               />
@@ -218,8 +286,8 @@ const Admin: React.FC = () => {
                 type="text" 
                 placeholder="Category"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
-                value={newItem.category}
-                onChange={e => setNewItem({...newItem, category: e.target.value})}
+                value={formState.category}
+                onChange={e => setFormState({...formState, category: e.target.value})}
               />
               
               <div className="space-y-2">
@@ -227,7 +295,7 @@ const Admin: React.FC = () => {
                 <label className={`w-full bg-black border border-neutral-800 rounded-lg p-3 flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
                   <Upload size={20} className="text-neutral-500" />
                   <span className="text-sm text-neutral-400">
-                    {uploading ? 'Uploading to Cloud...' : newItem.image ? 'Change image' : 'Choose file'}
+                    {uploading ? 'Uploading to Cloud...' : formState.image ? 'Change image' : 'Choose file'}
                   </span>
                   <input 
                     type="file" 
@@ -237,24 +305,34 @@ const Admin: React.FC = () => {
                     className="hidden"
                   />
                 </label>
-                {newItem.image && (
-                  <img src={newItem.image} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
+                {formState.image && (
+                  <img src={formState.image} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
                 )}
               </div>
 
               <textarea 
                 placeholder="Description"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white h-20"
-                value={newItem.description}
-                onChange={e => setNewItem({...newItem, description: e.target.value})}
+                value={formState.description}
+                onChange={e => setFormState({...formState, description: e.target.value})}
               />
               
               <button 
                 type="submit" 
-                disabled={uploading || !newItem.image}
-                className="w-full bg-red-600 text-white font-bold py-3 rounded-xl disabled:opacity-50"
+                disabled={uploading || !formState.image}
+                className="w-full bg-red-600 text-white font-bold py-3 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {uploading ? 'Uploading...' : 'Add Product'}
+                {editingProduct ? (
+                  <>
+                    <Save size={20} />
+                    <span>Save Changes</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={20} />
+                    <span>Add Product</span>
+                  </>
+                )}
               </button>
             </form>
           )}
@@ -262,12 +340,23 @@ const Admin: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             {products.map(p => (
               <div key={p.id} className="bg-neutral-900 rounded-xl p-3 relative group">
-                <button
-                  onClick={() => handleDeleteProduct(p.id, p.name)}
-                  className="absolute top-2 right-2 z-10 bg-red-600/80 hover:bg-red-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 size={16} />
-                </button>
+                {/* Кнопки управления */}
+                <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleEditProduct(p)}
+                    className="bg-blue-600/80 hover:bg-blue-600 text-white p-1.5 rounded-lg transition-colors"
+                    title="Edit product"
+                  >
+                    <Edit size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(p.id, p.name)}
+                    className="bg-red-600/80 hover:bg-red-600 text-white p-1.5 rounded-lg transition-colors"
+                    title="Delete product"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
                 
                 {p.image ? (
                   <img src={p.image} alt={p.name} className="w-full h-32 object-cover rounded-lg mb-2 bg-neutral-800" loading="lazy" />
@@ -279,8 +368,8 @@ const Admin: React.FC = () => {
                 <p className="font-bold text-sm truncate">{p.name}</p>
                 <p className="text-sm text-neutral-400">{p.price} BYN</p>
                 {p.quantity !== undefined && (
-                  <p className={`text-xs mt-1 ${
-                    (p.quantity || 0) <= 0 ? 'text-red-500' : 'text-neutral-500'
+                  <p className={`text-xs mt-1 font-medium ${
+                    (p.quantity || 0) <= 0 ? 'text-red-500' : 'text-emerald-500'
                   }`}>
                     Qty: {p.quantity}
                   </p>
@@ -295,7 +384,7 @@ const Admin: React.FC = () => {
           </div>
         </>
       ) : activeTab === AdminTab.PRODUCT_REQUESTS ? (
-        // ✅ НОВЫЙ ТАБ: Запросы на товары
+        // ... (код таба запросов без изменений) ...
         <div className="space-y-4">
           {pendingRequests.map(request => (
             <div key={request.id} className="bg-neutral-900 rounded-xl p-4">
@@ -338,7 +427,7 @@ const Admin: React.FC = () => {
           {pendingRequests.length === 0 && <p className="text-neutral-500 text-center py-8">No pending product requests</p>}
         </div>
       ) : (
-        // Таб заказов (без изменений)
+        // ... (код таба заказов без изменений) ...
         <div className="space-y-4">
           {pendingOrders.map(order => (
             <div key={order.id} className="bg-neutral-900 rounded-xl p-4">
