@@ -15,7 +15,7 @@ export const api = {
       body: JSON.stringify({ 
         telegram_id: telegramId, 
         username,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -49,7 +49,7 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_data: getInitData() })
+      body: JSON.stringify({ init_ getInitData() })
     });
     if (!response.ok) throw new Error('Failed to delete product');
     return response.json();
@@ -81,7 +81,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -94,7 +94,7 @@ export const api = {
     }
     
     const data = await response.json();
-    console.log('✅ API response data:', data);
+    console.log('✅ API response ', data);
     return data;
   },
 
@@ -115,7 +115,7 @@ export const api = {
     return response.json();
   },
 
-  // ✅ НОВОЕ: Запрос товара
+  // ✅ Запрос товара
   async requestProduct(userId: number, productName: string, quantity: number, image?: string) {
     const response = await fetch(`${API_BASE_URL}/product-requests`, {
       method: 'POST',
@@ -125,7 +125,7 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -134,6 +134,41 @@ export const api = {
       throw new Error(error || 'Failed to request product');
     }
     
+    return response.json();
+  },
+
+  // ✅ Получение всех запросов (для админа)
+  async getProductRequests() {
+    const response = await fetch(`${API_BASE_URL}/product-requests`, {
+      headers: { 'X-Telegram-Init-Data': getInitData() }
+    });
+    if (!response.ok) throw new Error('Failed to fetch product requests');
+    return response.json();
+  },
+
+  // ✅ Получение запросов пользователя
+  async getUserProductRequests(userId: number) {
+    const response = await fetch(`${API_BASE_URL}/product-requests/user/${userId}`, {
+      headers: { 'X-Telegram-Init-Data': getInitData() }
+    });
+    if (!response.ok) throw new Error('Failed to fetch user product requests');
+    return response.json();
+  },
+
+  // ✅ Обработка запроса (одобрение/отклонение)
+  async processProductRequest(requestId: string, status: 'approved' | 'rejected') {
+    const response = await fetch(`${API_BASE_URL}/product-requests/${requestId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        status,
+        init_ getInitData()
+      })
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to process product request');
+    }
     return response.json();
   },
 };
