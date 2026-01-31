@@ -5,7 +5,6 @@ import Items from './views/Items';
 import Cart from './views/Cart';
 import Profile from './views/Profile';
 import Admin from './views/Admin';
-import Notifications from './components/Notifications';
 import { View } from './types';
 
 const AppContent: React.FC = () => {
@@ -43,18 +42,13 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <>
-      <Layout 
-        currentView={currentView} 
-        setCurrentView={setCurrentView}
-        cartItemsCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-      >
-        {renderView()}
-      </Layout>
-      
-      {/* Уведомления (показываем на всех страницах) */}
-      <Notifications />
-    </>
+    <Layout 
+      currentView={currentView} 
+      setCurrentView={setCurrentView}
+      cartItemsCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+    >
+      {renderView()}
+    </Layout>
   );
 };
 
