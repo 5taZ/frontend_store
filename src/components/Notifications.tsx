@@ -23,15 +23,15 @@ const Notifications: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed top-2 right-2 z-50">
       {/* Кнопка колокольчика */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-neutral-900 rounded-full hover:bg-neutral-800 transition-colors border border-neutral-800"
+        className="relative p-2 bg-neutral-900 rounded-full hover:bg-neutral-800 transition-colors border border-neutral-800 shadow-lg"
       >
-        <Bell size={24} className="text-white" />
+        <Bell size={20} className="text-white" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
             {unreadCount}
           </span>
         )}
@@ -64,7 +64,6 @@ const Notifications: React.FC = () => {
                   }`}
                   onClick={() => {
                     markNotificationAsRead(notification.id);
-                    // Можно добавить переход к заказу или другое действие
                   }}
                 >
                   <div className="flex items-start gap-3">
