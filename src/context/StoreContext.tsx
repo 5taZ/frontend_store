@@ -18,9 +18,6 @@ interface StoreContextType {
   placeOrder: () => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>;
   processOrder: (orderId: string, approved: boolean) => Promise<void>;
-  addNotification: (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
-  markNotificationAsRead: (notificationId: string) => void;
-  markAllNotificationsAsRead: () => void;
   requestProduct: (productName: string, quantity: number, image?: string) => Promise<void>;
   processProductRequest: (requestId: string, approved: boolean) => Promise<void>;
   isAdmin: boolean;
@@ -89,6 +86,41 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       await loadOrders(user.id, isAdmin);
     }
   }, [user, isAdmin, loadOrders]);
+
+  // ✅ НОВОЕ: Загрузка уведомлений с сервера
+  const refreshNotifications = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const notificationsData = await api.getNotifications();
+      
+      setNotifications(notificationsData.map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        read: n.isRead,
+        createdAt: n.createdAt,
+        orderId: n.orderId
+      })));
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    // Загружаем уведомления при инициализации
+    refreshNotifications();
+    
+    // Автообновление каждые 10 секунд
+    const interval = setInterval(() => {
+      refreshNotifications();
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [user, refreshNotifications]);
 
   useEffect(() => {
     if (!user) return;
@@ -236,7 +268,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const updateProduct = useCallback(async (productId: string, product: Partial<Product>) => {
     console.log('🔄 updateProduct called:', { productId, product });
     
-    // ✅ ИСПРАВЛЕНО: Убедимся, что quantity - число
     if (product.quantity !== undefined && typeof product.quantity !== 'number') {
       console.warn('⚠️ Quantity is not a number, converting:', product.quantity);
       product = { ...product, quantity: Number(product.quantity) };
@@ -423,30 +454,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [isAdmin, orders]);
 
-  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now().toString(),
-      read: false,
-      createdAt: Date.now()
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-  }, []);
-
-  const markNotificationAsRead = useCallback((notificationId: string) => {
-    setNotifications(prev => prev.map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
-    ));
-  }, []);
-
-  const markAllNotificationsAsRead = useCallback(() => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        !notification.read ? { ...notification, read: true } : notification
-      )
-    );
-  }, []);
-
   const requestProduct = useCallback(async (productName: string, quantity: number, image?: string) => {
     if (!user) {
       console.error('❌ Cannot request product: no user');
@@ -466,12 +473,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       console.log('✅ Product request successful:', result);
       
-      addNotification({
-        type: 'product_requested',
-        title: 'Product Requested',
-        message: `Your request for "${productName}" has been sent to admin.`
-      });
-      
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.showPopup) {
         tg.showPopup({
@@ -490,7 +491,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       alert(`Failed to request product: ${error.message || 'Unknown error'}`);
     }
-  }, [user, addNotification]);
+  }, [user]);
 
   const processProductRequest = useCallback(async (requestId: string, approved: boolean) => {
     if (!isAdmin) return;
@@ -499,21 +500,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const status = approved ? 'approved' : 'rejected';
       await api.processProductRequest(requestId, status as any);
       
-      addNotification({
-        type: approved ? 'product_request_approved' : 'product_request_rejected',
-        title: approved ? 'Request Approved' : 'Request Rejected',
-        message: `Product request ${approved ? 'approved' : 'rejected'} successfully.`
-      });
-      
       await refreshProductRequests();
     } catch (error: any) {
       alert(`Failed to process request: ${error.message || 'Unknown error'}`);
     }
-  }, [isAdmin, addNotification]);
-
-  const refreshNotifications = useCallback(async () => {
-    // TODO: Загрузить уведомления с сервера
-  }, []);
+  }, [isAdmin]);
 
   const refreshProductRequests = useCallback(async () => {
     if (!user) return;
@@ -560,9 +551,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         placeOrder,
         cancelOrder,
         processOrder,
-        addNotification,
-        markNotificationAsRead,
-        markAllNotificationsAsRead,
         requestProduct,
         processProductRequest,
         isAdmin,
