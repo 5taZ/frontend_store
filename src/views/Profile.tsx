@@ -4,7 +4,7 @@ import { useStore } from '../context/StoreContext';
 import { OrderStatus } from '../types';
 
 const Profile: React.FC = () => {
-  const { user, orders, cancelOrder } = useStore(); // Добавлен cancelOrder
+  const { user, orders, cancelOrder } = useStore();
 
   if (!user) return null;
 
@@ -12,11 +12,30 @@ const Profile: React.FC = () => {
     .filter(order => order.userId === user.id)
     .sort((a, b) => b.date - a.date);
 
-  const getStatusIcon = (status: OrderStatus) => {
+  // Возвращаем иконку и стили для каждого статуса
+  const getStatusConfig = (status: OrderStatus) => {
     switch (status) {
-      case OrderStatus.CONFIRMED: return <CheckCircle size={16} className="text-green-500" />;
-      case OrderStatus.CANCELED: return <XCircle size={16} className="text-red-500" />;
-      default: return <Clock size={16} className="text-yellow-500" />;
+      case OrderStatus.CONFIRMED:
+        return {
+          icon: <CheckCircle size={16} className="text-green-500" />,
+          badgeClass: 'bg-green-900/30 text-green-500 border-green-500/30',
+          label: 'Подтверждено',
+          color: 'text-green-500'
+        };
+      case OrderStatus.CANCELED:
+        return {
+          icon: <XCircle size={16} className="text-red-500" />,
+          badgeClass: 'bg-red-900/30 text-red-500 border-red-500/30',
+          label: 'Отклонено',
+          color: 'text-red-500'
+        };
+      default: // PENDING
+        return {
+          icon: <Clock size={16} className="text-yellow-500" />,
+          badgeClass: 'bg-yellow-900/30 text-yellow-500 border-yellow-500/30',
+          label: 'Ожидание',
+          color: 'text-yellow-500'
+        };
     }
   };
 
@@ -41,46 +60,55 @@ const Profile: React.FC = () => {
         </h3>
         
         <div className="space-y-4">
-          {userOrders.map((order) => (
-            <div key={order.id} className="bg-neutral-900 rounded-xl p-4 border border-neutral-800">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <span className="text-xs text-neutral-500">#{order.id.slice(-6)}</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getStatusIcon(order.status)}
-                    <span className="text-sm font-medium">{order.status}</span>
+          {userOrders.map((order) => {
+            const statusConfig = getStatusConfig(order.status);
+            
+            return (
+              <div 
+                key={order.id} 
+                className={`rounded-xl p-4 border ${statusConfig.badgeClass}`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <span className="text-xs text-neutral-500">#{order.id.slice(-6)}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      {statusConfig.icon}
+                      <span className={`text-sm font-bold ${statusConfig.color}`}>
+                        {statusConfig.label}
+                      </span>
+                    </div>
                   </div>
+                  <span className="text-xs text-neutral-400">
+                    {new Date(order.date).toLocaleDateString()}
+                  </span>
                 </div>
-                <span className="text-xs text-neutral-400">
-                  {new Date(order.date).toLocaleDateString()}
-                </span>
-              </div>
 
-              <div className="space-y-2 mb-3">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <span className="text-neutral-300">{item.name} x{item.quantity}</span>
-                    <span className="text-neutral-400">{item.price * item.quantity} BYN</span>
-                  </div>
-                ))}
-              </div>
+                <div className="space-y-2 mb-3">
+                  {order.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-sm">
+                      <span className="text-neutral-300">{item.name} x{item.quantity}</span>
+                      <span className="text-neutral-400">{item.price * item.quantity} BYN</span>
+                    </div>
+                  ))}
+                </div>
 
-              <div className="flex justify-between items-center pt-3 border-t border-neutral-800">
-                <span className="font-bold">{order.totalAmount} BYN</span>
-                
-                {/* Кнопка отмены для заказов в ожидании */}
-                {order.status === OrderStatus.PENDING && (
-                  <button
-                    onClick={() => cancelOrder(order.id)}
-                    className="flex items-center gap-1 text-red-500 text-sm hover:text-red-400"
-                  >
-                    <Ban size={14} />
-                    Cancel Order
-                  </button>
-                )}
+                <div className="flex justify-between items-center pt-3 border-t border-neutral-800">
+                  <span className="font-bold">{order.totalAmount} BYN</span>
+                  
+                  {/* Кнопка отмены для заказов в ожидании */}
+                  {order.status === OrderStatus.PENDING && (
+                    <button
+                      onClick={() => cancelOrder(order.id)}
+                      className="flex items-center gap-1 text-red-500 text-sm hover:text-red-400 transition-colors"
+                    >
+                      <Ban size={14} />
+                      Cancel Order
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {userOrders.length === 0 && <p className="text-neutral-500 text-center">No orders yet</p>}
         </div>
       </div>
