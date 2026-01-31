@@ -95,8 +95,26 @@ const Admin: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formState.name || !formState.price) {
-      alert('Please fill in all required fields');
+    // ✅ УЛУЧШЕННАЯ ВАЛИДАЦИЯ (без обязательного изображения)
+    const name = formState.name.trim();
+    const price = formState.price.trim();
+    const quantity = formState.quantity.trim();
+    
+    if (!name || !price || !quantity) {
+      alert('Please fill in all required fields: name, price, and quantity');
+      return;
+    }
+    
+    const priceNum = Number(price);
+    const quantityNum = Number(quantity);
+    
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert('Price must be a positive number');
+      return;
+    }
+    
+    if (isNaN(quantityNum) || quantityNum <= 0) {
+      alert('Quantity must be a positive number');
       return;
     }
 
@@ -104,25 +122,25 @@ const Admin: React.FC = () => {
       if (editingProduct) {
         // Редактирование существующего товара
         await updateProduct(editingProduct, {
-          name: formState.name,
-          price: Number(formState.price),
-          image: formState.image,
-          category: formState.category || 'General',
-          description: formState.description || 'No description',
-          quantity: Number(formState.quantity) || 1
+          name: name,
+          price: priceNum,
+          image: formState.image || undefined, // ✅ Изображение необязательно
+          category: formState.category.trim() || 'General',
+          description: formState.description.trim() || 'No description',
+          quantity: quantityNum
         });
         setNotification({ message: 'Product updated!', type: 'success' });
       } else {
         // Добавление нового товара
         await addProduct({
           id: Date.now().toString(),
-          name: formState.name,
-          price: Number(formState.price),
-          image: formState.image,
-          category: formState.category || 'General',
-          description: formState.description || 'No description',
+          name: name,
+          price: priceNum,
+          image: formState.image || '', // ✅ Разрешаем пустое изображение
+          category: formState.category.trim() || 'General',
+          description: formState.description.trim() || 'No description',
           inStock: true,
-          quantity: Number(formState.quantity) || 1
+          quantity: quantityNum
         });
         setNotification({ message: 'Product added!', type: 'success' });
       }
@@ -131,8 +149,15 @@ const Admin: React.FC = () => {
       setFormState({ id: '', name: '', price: '', image: '', category: '', description: '', quantity: '1' });
       setIsAdding(false);
       setEditingProduct(null);
-    } catch (error) {
-      setNotification({ message: 'Failed to save product', type: 'error' });
+    } catch (error: any) {
+      console.error('❌ Error saving product:', error);
+      console.error('Error message:', error.message);
+      
+      // ✅ ПОКАЗЫВАЕМ ДЕТАЛЬНУЮ ОШИБКУ
+      setNotification({ 
+        message: `Failed to save: ${error.message || 'Unknown error. Check console for details.'}`, 
+        type: 'error' 
+      });
     }
   };
 
@@ -253,7 +278,7 @@ const Admin: React.FC = () => {
             <form onSubmit={handleSubmit} className="bg-neutral-900 p-4 rounded-xl space-y-3 mb-4">
               <input 
                 type="text" 
-                placeholder="Product Name"
+                placeholder="Product Name *"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.name}
                 onChange={e => setFormState({...formState, name: e.target.value})}
@@ -261,15 +286,17 @@ const Admin: React.FC = () => {
               />
               <input 
                 type="number" 
-                placeholder="Price (BYN)"
+                placeholder="Price (BYN) *"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.price}
                 onChange={e => setFormState({...formState, price: e.target.value})}
                 required
+                min="0.01"
+                step="0.01"
               />
               <input 
                 type="number" 
-                placeholder="Quantity"
+                placeholder="Quantity *"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.quantity}
                 onChange={e => setFormState({...formState, quantity: e.target.value})}
@@ -278,18 +305,18 @@ const Admin: React.FC = () => {
               />
               <input 
                 type="text" 
-                placeholder="Category"
+                placeholder="Category (optional)"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
                 value={formState.category}
                 onChange={e => setFormState({...formState, category: e.target.value})}
               />
               
               <div className="space-y-2">
-                <label className="block text-sm text-neutral-400">Product Image</label>
+                <label className="block text-sm text-neutral-400">Product Image (optional)</label>
                 <label className={`w-full bg-black border border-neutral-800 rounded-lg p-3 flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
                   <Upload size={20} className="text-neutral-500" />
                   <span className="text-sm text-neutral-400">
-                    {uploading ? 'Uploading to Cloud...' : formState.image ? 'Change image' : 'Choose file'}
+                    {uploading ? 'Uploading...' : formState.image ? 'Change image' : 'Upload image (optional)'}
                   </span>
                   <input 
                     type="file" 
@@ -300,18 +327,28 @@ const Admin: React.FC = () => {
                   />
                 </label>
                 {formState.image && (
-                  <img src={formState.image} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
+                  <div className="relative w-full h-40">
+                    <img src={formState.image} alt="Preview" className="w-full h-full object-cover rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => setFormState(prev => ({ ...prev, image: '' }))}
+                      className="absolute top-2 right-2 bg-red-600/80 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                      title="Remove image"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 )}
               </div>
 
               <textarea 
-                placeholder="Description"
+                placeholder="Description (optional)"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white h-20 focus:outline-none focus:border-red-600"
                 value={formState.description}
                 onChange={e => setFormState({...formState, description: e.target.value})}
               />
               
-              {/* ✅ НОВОЕ: Кнопки галочка и крестик вместо одной кнопки */}
+              {/* ✅ ИСПРАВЛЕНО: Кнопки галочка и крестик без обязательного изображения */}
               <div className="flex gap-3">
                 <button 
                   type="button"
@@ -323,13 +360,21 @@ const Admin: React.FC = () => {
                 </button>
                 <button 
                   type="submit" 
-                  disabled={uploading || !formState.image || !formState.name || !formState.price}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                  disabled={uploading || !formState.name.trim() || !formState.price.trim() || !formState.quantity.trim()}
+                  className={`flex-1 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${
+                    uploading || !formState.name.trim() || !formState.price.trim() || !formState.quantity.trim()
+                      ? 'bg-neutral-700 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  }`}
                 >
                   <Check size={20} />
                   <span>{editingProduct ? 'Save Changes' : 'Add Product'}</span>
                 </button>
               </div>
+              
+              <p className="text-xs text-neutral-500 text-center mt-2">
+                * Required fields
+              </p>
             </form>
           )}
 
@@ -357,8 +402,8 @@ const Admin: React.FC = () => {
                 {p.image ? (
                   <img src={p.image} alt={p.name} className="w-full h-32 object-cover rounded-lg mb-2 bg-neutral-800" loading="lazy" />
                 ) : (
-                  <div className="w-full h-32 bg-neutral-800 rounded-lg mb-2 flex items-center justify-center text-neutral-600 text-xs">
-                    No Image
+                  <div className="w-full h-32 bg-neutral-800 rounded-lg mb-2 flex items-center justify-center text-neutral-600 text-xs border-2 border-dashed border-neutral-700">
+                    <span>No Image</span>
                   </div>
                 )}
                 <p className="font-bold text-sm truncate">{p.name}</p>
