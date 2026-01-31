@@ -6,6 +6,7 @@ export interface Product {
   description: string;
   category: string;
   inStock: boolean;
+  quantity?: number; // ✅ Добавлено: количество товара
 }
 
 export interface CartItem extends Product {
