@@ -113,5 +113,27 @@ export const api = {
       throw new Error(error || 'Failed to update order status');
     }
     return response.json();
-  }
+  },
+
+  // ✅ НОВОЕ: Запрос товара
+  async requestProduct(userId: number, productName: string, quantity: number, image?: string) {
+    const response = await fetch(`${API_BASE_URL}/product-requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        user_id: userId,
+        product_name: productName,
+        quantity,
+        image,
+        init_data: getInitData()
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to request product');
+    }
+    
+    return response.json();
+  },
 };
