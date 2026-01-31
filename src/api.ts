@@ -15,7 +15,7 @@ export const api = {
       body: JSON.stringify({ 
         telegram_id: telegramId, 
         username,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     
@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -49,7 +49,7 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_ getInitData() })
+      body: JSON.stringify({ init_data: getInitData() })
     });
     if (!response.ok) throw new Error('Failed to delete product');
     return response.json();
@@ -81,7 +81,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     
@@ -94,7 +94,7 @@ export const api = {
     }
     
     const data = await response.json();
-    console.log('✅ API response ', data);
+    console.log('✅ API response data:', data);
     return data;
   },
 
@@ -125,7 +125,7 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     
@@ -162,7 +162,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_ getInitData()
+        init_data: getInitData()
       })
     });
     if (!response.ok) {
