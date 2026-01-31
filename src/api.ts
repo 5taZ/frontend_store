@@ -55,8 +55,16 @@ export const api = {
     return response.json();
   },
 
-  // ✅ НОВОЕ: Обновление товара
+  // ✅ НОВОЕ: Обновление товара с логированием и преобразованием quantity
   async updateProduct(productId: string, product: Partial<any>) {
+    console.log('📡 API updateProduct called:', { productId, product });
+    
+    // ✅ ИСПРАВЛЕНО: Убедимся, что quantity - число
+    if (product.quantity !== undefined && typeof product.quantity !== 'number') {
+      console.warn('⚠️ API: Quantity is not a number, converting:', product.quantity);
+      product = { ...product, quantity: Number(product.quantity) };
+    }
+    
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -65,8 +73,18 @@ export const api = {
         init_data: getInitData()
       })
     });
-    if (!response.ok) throw new Error('Failed to update product');
-    return response.json();
+    
+    console.log('📡 API response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API error response:', errorText);
+      throw new Error(errorText || 'Failed to update product');
+    }
+    
+    const data = await response.json();
+    console.log('✅ API response ', data);
+    return data;
   },
 
   async getAllOrders() {
@@ -108,7 +126,7 @@ export const api = {
     }
     
     const data = await response.json();
-    console.log('✅ API response data:', data);
+    console.log('✅ API response ', data);
     return data;
   },
 
@@ -134,7 +152,7 @@ export const api = {
     console.log('📡 API requestProduct called:', { userId, productName, quantity, image });
     
     const initData = getInitData();
-    console.log('📡 Telegram init data:', initData ? 'Present' : 'Missing');
+    console.log('📡 Telegram init ', initData ? 'Present' : 'Missing');
     
     const response = await fetch(`${API_BASE_URL}/product-requests`, {
       method: 'POST',
@@ -157,7 +175,7 @@ export const api = {
     }
     
     const data = await response.json();
-    console.log('✅ API response data:', data);
+    console.log('✅ API response ', data);
     return data;
   },
 
