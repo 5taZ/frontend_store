@@ -6,7 +6,7 @@ export interface Product {
   description: string;
   category: string;
   inStock: boolean;
-  quantity?: number; // ✅ Добавлено: количество товара
+  quantity?: number;
 }
 
 export interface CartItem extends Product {
@@ -40,6 +40,27 @@ export interface Order {
   totalAmount: number;
   status: OrderStatus;
   date: number;
+}
+
+export interface Notification {
+  id: string;
+  type: 'order_confirmed' | 'order_rejected' | 'product_requested';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: number;
+  orderId?: string;
+}
+
+export interface ProductRequest {
+  id: string;
+  userId: number;
+  username: string;
+  productName: string;
+  quantity: number;
+  image?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
 }
 
 export const ADMIN_TELEGRAM_USERNAME = "next_gear_manager";
