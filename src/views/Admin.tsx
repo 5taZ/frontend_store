@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Trash2, Upload, Edit, Save } from 'lucide-react';
+import { Plus, X, Trash2, Upload, Edit, Save, Box, XCircle, CheckCircle, Clock } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { OrderStatus } from '../types';
 
 // ТВОЙ CLOUDINARY (безопасно, т.к. unsigned preset только для загрузки фото)
 const CLOUDINARY_CLOUD_NAME = 'dpghjapcd';
@@ -384,7 +385,6 @@ const Admin: React.FC = () => {
           </div>
         </>
       ) : activeTab === AdminTab.PRODUCT_REQUESTS ? (
-        // ... (код таба запросов без изменений) ...
         <div className="space-y-4">
           {pendingRequests.map(request => (
             <div key={request.id} className="bg-neutral-900 rounded-xl p-4">
@@ -427,7 +427,6 @@ const Admin: React.FC = () => {
           {pendingRequests.length === 0 && <p className="text-neutral-500 text-center py-8">No pending product requests</p>}
         </div>
       ) : (
-        // ... (код таба заказов без изменений) ...
         <div className="space-y-4">
           {pendingOrders.map(order => (
             <div key={order.id} className="bg-neutral-900 rounded-xl p-4">
