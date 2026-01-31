@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Check, Ban, Package, ClipboardList } from 'lucide-react';
+import { Plus, X, Check, Ban, Package, ClipboardList, Trash2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus } from '../types';
 
@@ -9,7 +9,7 @@ enum AdminTab {
 }
 
 const Admin: React.FC = () => {
-  const { products, addProduct, orders, processOrder } = useStore();
+  const { products, addProduct, removeProduct, orders, processOrder } = useStore(); // Добавлен removeProduct
   const [activeTab, setActiveTab] = useState<AdminTab>(AdminTab.ORDERS);
   const [isAdding, setIsAdding] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -24,11 +24,17 @@ const Admin: React.FC = () => {
     description: '',
   });
 
-  // Загрузка файла и конвертация в base64
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         alert('Image too large. Max 5MB');
         return;
       }
@@ -59,12 +65,15 @@ const Admin: React.FC = () => {
     setNotification({ message: 'Item added', type: 'success' });
   };
 
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => setNotification(null), 3000);
-      return () => clearTimeout(timer);
+  // Обработчик удаления
+  const handleDeleteProduct = async (productId: string, productName: string) => {
+    try {
+      await removeProduct(productId);
+      setNotification({ message: `Deleted: ${productName}`, type: 'success' });
+    } catch (error) {
+      setNotification({ message: 'Failed to delete', type: 'error' });
     }
-  }, [notification]);
+  };
 
   const handleProcessOrder = (orderId: string, approved: boolean) => {
     processOrder(orderId, approved);
@@ -127,7 +136,7 @@ const Admin: React.FC = () => {
               />
               <input 
                 type="number" 
-                placeholder="Price (BYN)" // Изменено на BYN
+                placeholder="Price (BYN)"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
                 value={newItem.price}
                 onChange={e => setNewItem({...newItem, price: e.target.value})}
@@ -141,7 +150,6 @@ const Admin: React.FC = () => {
                 onChange={e => setNewItem({...newItem, category: e.target.value})}
               />
               
-              {/* Загрузка файла вместо URL */}
               <div className="space-y-2">
                 <label className="block text-sm text-neutral-400">Product Image</label>
                 <input 
@@ -168,14 +176,31 @@ const Admin: React.FC = () => {
             </form>
           )}
 
+          {/* Сетка товаров с кнопкой удаления */}
           <div className="grid grid-cols-2 gap-4">
             {products.map(p => (
-              <div key={p.id} className="bg-neutral-900 rounded-xl p-3">
-                {p.image && <img src={p.image} alt={p.name} className="w-full h-32 object-cover rounded-lg mb-2" />}
-                <p className="font-bold">{p.name}</p>
+              <div key={p.id} className="bg-neutral-900 rounded-xl p-3 relative group">
+                {/* Кнопка удаления (мусорка) */}
+                <button
+                  onClick={() => handleDeleteProduct(p.id, p.name)}
+                  className="absolute top-2 right-2 z-10 bg-red-600/80 hover:bg-red-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Delete item"
+                >
+                  <Trash2 size={16} />
+                </button>
+                
+                {p.image && (
+                  <img src={p.image} alt={p.name} className="w-full h-32 object-cover rounded-lg mb-2" />
+                )}
+                <p className="font-bold truncate">{p.name}</p>
                 <p className="text-sm text-neutral-400">{p.price} BYN</p>
               </div>
             ))}
+            {products.length === 0 && (
+              <div className="col-span-2 text-center text-neutral-500 py-10">
+                No items in inventory
+              </div>
+            )}
           </div>
         </>
       ) : (
@@ -190,26 +215,27 @@ const Admin: React.FC = () => {
               <div className="space-y-1 mb-3">
                 {order.items.map((item, i) => (
                   <div key={i} className="text-sm text-neutral-300">
-                    {item.name} x{item.quantity} - {item.price * item.quantity} BYN
+                    {item.name} x{item.quantity}
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-neutral-800">
-                <span className="font-bold">Total: {order.totalAmount} BYN</span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleProcessOrder(order.id, false)}
-                    className="bg-red-600/20 text-red-500 px-3 py-1 rounded-lg text-sm"
-                  >
-                    <Ban size={16} />
-                  </button>
-                  <button 
-                    onClick={() => handleProcessOrder(order.id, true)}
-                    className="bg-green-600/20 text-green-500 px-3 py-1 rounded-lg text-sm"
-                  >
-                    <Check size={16} />
-                  </button>
-                </div>
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm text-neutral-400">Total</span>
+                <span className="font-bold">{order.totalAmount} BYN</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => handleProcessOrder(order.id, false)}
+                  className="bg-red-600/20 text-red-500 py-2 rounded-lg text-sm font-medium"
+                >
+                  Reject
+                </button>
+                <button 
+                  onClick={() => handleProcessOrder(order.id, true)}
+                  className="bg-white text-black py-2 rounded-lg text-sm font-bold"
+                >
+                  Confirm
+                </button>
               </div>
             </div>
           ))}
