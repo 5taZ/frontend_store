@@ -27,6 +27,7 @@ const Admin: React.FC = () => {
     image: '',
     category: '',
     description: '',
+    quantity: '1', // ✅ Добавлено поле количества
   });
 
   useEffect(() => {
@@ -89,10 +90,11 @@ const Admin: React.FC = () => {
       image: newItem.image, // Это уже URL с Cloudinary
       category: newItem.category || 'General',
       description: newItem.description || 'No description',
-      inStock: true
+      inStock: true,
+      quantity: Number(newItem.quantity) || 1 // ✅ Добавлено количество
     });
 
-    setNewItem({ name: '', price: '', image: '', category: '', description: '' });
+    setNewItem({ name: '', price: '', image: '', category: '', description: '', quantity: '1' });
     setIsAdding(false);
     setNotification({ message: 'Item added', type: 'success' });
   };
@@ -175,6 +177,15 @@ const Admin: React.FC = () => {
                 required
               />
               <input 
+                type="number" 
+                placeholder="Quantity"
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
+                value={newItem.quantity}
+                onChange={e => setNewItem({...newItem, quantity: e.target.value})}
+                min="1"
+                required
+              />
+              <input 
                 type="text" 
                 placeholder="Category"
                 className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white"
@@ -239,6 +250,13 @@ const Admin: React.FC = () => {
                 )}
                 <p className="font-bold text-sm truncate">{p.name}</p>
                 <p className="text-sm text-neutral-400">{p.price} BYN</p>
+                {p.quantity !== undefined && (
+                  <p className={`text-xs mt-1 ${
+                    (p.quantity || 0) <= 0 ? 'text-red-500' : 'text-neutral-500'
+                  }`}>
+                    Qty: {p.quantity}
+                  </p>
+                )}
               </div>
             ))}
             {products.length === 0 && (
