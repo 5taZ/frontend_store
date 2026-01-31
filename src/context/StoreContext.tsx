@@ -7,18 +7,18 @@ interface StoreContextType {
   cart: CartItem[];
   user: User | null;
   orders: Order[];
-  addToCart: (product: Product) => void; // Синхронно, без ожидания
-  removeFromCart: (productId: string) => void; // Синхронно
+  addToCart: (product: Product) => void;
+  removeFromCart: (productId: string) => void;
   clearCart: () => void;
   addProduct: (product: Product) => Promise<void>;
   removeProduct: (productId: string) => Promise<void>;
-  placeOrder: () => Promise<void>; // Оптимистичное обновление
-  cancelOrder: (orderId: string) => Promise<void>; // Оптимистичное обновление
-  processOrder: (orderId: string, approved: boolean) => Promise<void>; // Оптимистичное обновление
+  placeOrder: () => Promise<void>;
+  cancelOrder: (orderId: string) => Promise<void>;
+  processOrder: (orderId: string, approved: boolean) => Promise<void>;
   isAdmin: boolean;
   loading: boolean;
   refreshOrders: () => Promise<void>;
-  refreshProducts: () => Promise<void>; // Добавлено
+  refreshProducts: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -31,7 +31,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Загрузка заказов (оптимизированная)
   const loadOrders = useCallback(async (userId: number, adminStatus: boolean) => {
     try {
       let ordersData;
@@ -55,7 +54,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
-  // Загрузка продуктов (оптимизированная) - с загрузкой quantity
   const refreshProducts = useCallback(async () => {
     try {
       const data = await api.getProducts();
@@ -67,7 +65,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         description: p.description,
         category: p.category,
         inStock: p.in_stock,
-        quantity: p.quantity || 1 // ✅ Загружаем quantity из БД
+        quantity: p.quantity || 1
       })));
     } catch (error) {
       console.error('Failed to load products:', error);
@@ -80,19 +78,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [user, isAdmin, loadOrders]);
 
-  // 🔄 AUTO-REFRESH: Обновление данных каждые 5 секунд (Real-time эффект)
   useEffect(() => {
     if (!user) return;
     
     const interval = setInterval(() => {
-      refreshOrders(); // Проверяем новые заказы/статусы
-      refreshProducts(); // Проверяем новые товары
-    }, 5000); // 5 секунд - оптимально для Telegram Mini App
+      refreshOrders();
+      refreshProducts();
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [user, isAdmin, refreshOrders, refreshProducts]);
 
-  // Инициализация
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -126,7 +122,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               
               setUser(userData);
 
-              // Параллельная загрузка (быстрее чем последовательная)
               await Promise.all([
                 refreshProducts(),
                 loadOrders(dbUser.id, userIsAdmin)
@@ -160,18 +155,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     initializeApp();
   }, [loadOrders, refreshProducts]);
 
-  // ⚡ ОПТИМИСТИЧНО: addToCart мгновенно, без ожидания сервера
   const addToCart = useCallback((product: Product) => {
-    // Мгновенное обновление UI
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
-        // Проверяем, достаточно ли товара на складе
         const productInStock = products.find(p => p.id === product.id);
         const maxAvailable = (productInStock?.quantity || 1) - existing.quantity;
         
         if (maxAvailable <= 0) {
-          // Нельзя добавить больше
           return prev;
         }
         
@@ -182,7 +173,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return [...prev, { ...product, quantity: 1 }];
     });
     
-    // Мгновенная вибрация (если поддерживается)
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.impactOccurred('light');
@@ -198,14 +188,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const addProduct = useCallback(async (product: Product) => {
-    // Оптимистично добавляем в UI сразу
     const tempId = Date.now().toString();
     const optimisticProduct = { ...product, id: tempId };
     setProducts(prev => [optimisticProduct, ...prev]);
     
     try {
       const dbProduct = await api.addProduct(product);
-      // Заменяем временный ID на реальный
       setProducts(prev => prev.map(p => p.id === tempId ? {
         id: dbProduct.id.toString(),
         name: dbProduct.name,
@@ -214,33 +202,35 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         description: dbProduct.description,
         category: dbProduct.category,
         inStock: dbProduct.in_stock,
-        quantity: dbProduct.quantity || 1 // ✅ Сохраняем quantity
+        quantity: dbProduct.quantity || 1
       } : p));
     } catch (error) {
-      // Откат при ошибке
       setProducts(prev => prev.filter(p => p.id !== tempId));
       throw error;
     }
   }, []);
 
   const removeProduct = useCallback(async (productId: string) => {
-    setProducts(prev => prev.filter(p => p.id !== productId)); // Сразу убираем
+    setProducts(prev => prev.filter(p => p.id !== productId));
     try {
       await api.deleteProduct(productId);
     } catch (error) {
-      refreshProducts(); // Возвращаем если ошибка
+      refreshProducts();
       throw error;
     }
   }, [refreshProducts]);
 
-  // ⚡ ОПТИМИСТИЧНО: Заказ создается мгновенно в UI (с логикой quantity)
   const placeOrder = useCallback(async () => {
-    if (!user || cart.length === 0) return;
+    if (!user || cart.length === 0) {
+      console.warn('⚠️ Cannot place order: no user or empty cart');
+      return;
+    }
 
     const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const tempOrderId = 'temp-' + Date.now();
     
-    // 1. Сразу показываем заказ в истории (PENDING)
+    console.log('📦 Starting placeOrder:', { userId: user.id, cartLength: cart.length, total });
+    
     const optimisticOrder: Order = {
       id: tempOrderId,
       userId: user.id,
@@ -252,93 +242,123 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     
     setOrders(prev => [optimisticOrder, ...prev]);
-    setCart([]); // Сразу очищаем корзину
+    setCart([]);
     
-    // 2. Уменьшаем quantity товаров (НОВАЯ ЛОГИКА)
-    setProducts(prev => 
-      prev.map(p => {
+    console.log('✅ Cart cleared, optimistic order added');
+    
+    setProducts(prev => {
+      const updated = prev.map(p => {
         const cartItem = cart.find(item => item.id === p.id);
         if (cartItem) {
           const newQuantity = (p.quantity || 1) - cartItem.quantity;
+          console.log(`📦 Product ${p.name}: ${p.quantity} → ${newQuantity}`);
           if (newQuantity <= 0) {
-            return null; // Удаляем товар если закончился
+            console.log(`🗑️ Product ${p.name} removed (quantity <= 0)`);
+            return null;
           }
           return { ...p, quantity: newQuantity };
         }
         return p;
-      }).filter(Boolean as any)
-    );
+      }).filter(Boolean as any);
+      
+      console.log(`✅ Products updated: ${updated.length} items remaining`);
+      return updated;
+    });
 
     try {
-      // 3. Отправляем на сервер в фоне (преобразуем id в число!)
       const cartItemsWithNumberId = cart.map(item => ({
         ...item,
-        id: parseInt(item.id) // ✅ ИСПРАВЛЕНИЕ: преобразуем в число для сервера
+        id: parseInt(item.id)
       }));
+      
+      console.log('📤 Sending to server:', { 
+        user_id: user.id, 
+        items: cartItemsWithNumberId, 
+        total_amount: total 
+      });
       
       const dbOrder = await api.createOrder(user.id, cartItemsWithNumberId, total);
       
-      // 4. Обновляем на реальный ID
-      setOrders(prev => prev.map(o => 
-        o.id === tempOrderId 
-          ? { ...o, id: dbOrder.id.toString(), date: new Date(dbOrder.created_at).getTime() }
-          : o
-      ));
+      console.log('✅ Server response:', dbOrder);
       
-      // Успех
+      setOrders(prev => {
+        const updated = prev.map(o => 
+          o.id === tempOrderId 
+            ? { ...o, id: dbOrder.id.toString(), date: new Date(dbOrder.created_at).getTime() }
+            : o
+        );
+        console.log('✅ Order ID updated:', dbOrder.id);
+        return updated;
+      });
+      
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.showPopup) {
-        tg.showPopup({ title: 'Order Placed', message: 'Successfully reserved!' });
+        tg.showPopup({ 
+          title: 'Order Placed', 
+          message: 'Your order has been sent. Items reserved awaiting confirmation.' 
+        });
       }
-    } catch (error) {
-      // Откат при ошибке
-      setOrders(prev => prev.filter(o => o.id !== tempOrderId));
-      // Восстанавливаем товары с их количеством
+      
+      console.log('🎉 Order placed successfully!');
+    } catch (error: any) {
+      console.error('❌ Error in placeOrder:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      console.log('🔄 Rolling back changes...');
+      
+      setOrders(prev => {
+        const filtered = prev.filter(o => o.id !== tempOrderId);
+        console.log(`✅ Removed temp order, ${filtered.length} orders remaining`);
+        return filtered;
+      });
+      
       setProducts(prev => {
         const restored = [...prev];
+        console.log('🔄 Restoring products...');
+        
         cart.forEach(item => {
           const existing = restored.find(p => p.id === item.id);
           if (existing) {
             existing.quantity = (existing.quantity || 0) + item.quantity;
+            console.log(`📦 Restored ${item.name}: +${item.quantity} → ${existing.quantity}`);
           } else {
             restored.push({ ...item, quantity: item.quantity });
+            console.log(`📦 Added back ${item.name}: ${item.quantity}`);
           }
         });
+        
+        console.log(`✅ Products restored: ${restored.length} items`);
         return restored;
       });
-      setCart(cart); // Возвращаем корзину
-      alert('Failed to place order. Please try again.');
+      
+      setCart(cart);
+      console.log('✅ Cart restored');
+      
+      alert(`Failed to place order: ${error.message || 'Unknown error'}. Please try again.`);
     }
   }, [user, cart]);
 
-  // ⚡ ОПТИМИСТИЧНО: Отмена заказа (товары НЕ возвращаются)
   const cancelOrder = useCallback(async (orderId: string) => {
     if (!user) return;
     
     const originalOrder = orders.find(o => o.id === orderId);
     if (!originalOrder) return;
     
-    // Сразу меняем статус в UI
     setOrders(prev => prev.map(o => 
       o.id === orderId ? { ...o, status: OrderStatus.CANCELED } : o
     ));
-    
-    // ⚠️ ВАЖНО: Товары НЕ возвращаются при отмене (новая логика)
-    // Ничего не делаем с продуктами
 
     try {
       await api.updateOrderStatus(orderId, 'CANCELED', undefined, user.id);
     } catch (error) {
-      // Откат
       setOrders(prev => prev.map(o => 
         o.id === orderId ? originalOrder : o
       ));
-      // Товары не возвращаем, так как они уже удалены/уменьшены
       alert('Failed to cancel order');
     }
   }, [user, orders]);
 
-  // ⚡ ОПТИМИСТИЧНО: Обработка заказа админом (товары НЕ возвращаются при отклонении)
   const processOrder = useCallback(async (orderId: string, approved: boolean) => {
     if (!isAdmin) return;
     
@@ -347,19 +367,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     const newStatus = approved ? OrderStatus.CONFIRMED : OrderStatus.CANCELED;
     
-    // Сразу обновляем UI
     setOrders(prev => prev.map(o => 
       o.id === orderId ? { ...o, status: newStatus } : o
     ));
-
-    // ⚠️ ВАЖНО: Товары НЕ возвращаются при отклонении (новая логика)
-    // Ничего не делаем с продуктами
 
     try {
       const tg = (window as any).Telegram?.WebApp;
       await api.updateOrderStatus(orderId, approved ? 'CONFIRMED' : 'CANCELED', tg?.initData);
     } catch (error) {
-      // Откат
       setOrders(prev => prev.map(o => 
         o.id === orderId ? originalOrder : o
       ));
@@ -374,8 +389,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         cart,
         user,
         orders,
-        addToCart, // Теперь мгновенный!
-        removeFromCart, // Мгновенный!
+        addToCart,
+        removeFromCart,
         clearCart,
         addProduct,
         removeProduct,
