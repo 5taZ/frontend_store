@@ -15,7 +15,7 @@ export const api = {
       body: JSON.stringify({ 
         telegram_id: telegramId, 
         username,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -49,7 +49,7 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_data: getInitData() })
+      body: JSON.stringify({ init_ getInitData() })
     });
     if (!response.ok) throw new Error('Failed to delete product');
     return response.json();
@@ -69,7 +69,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -112,7 +112,7 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     
@@ -135,7 +135,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: initData || getInitData(),
+        init_ initData || getInitData(),
         user_id: userId
       })
     });
@@ -161,7 +161,7 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_data: initData
+        init_ initData
       })
     });
     
@@ -203,22 +203,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: getInitData()
+        init_ getInitData()
       })
     });
     if (!response.ok) {
       const error = await response.text();
       throw new Error(error || 'Failed to process product request');
     }
-    return response.json();
-  },
-
-  // ✅ НОВОЕ: Получение уведомлений пользователя
-  async getNotifications() {
-    const response = await fetch(`${API_BASE_URL}/notifications`, {
-      headers: { 'X-Telegram-Init-Data': getInitData() }
-    });
-    if (!response.ok) throw new Error('Failed to fetch notifications');
     return response.json();
   },
 };
