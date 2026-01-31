@@ -1,8 +1,8 @@
-export interface Product {
+]export interface Product {
   id: string;
   name: string;
   price: number;
-  image: string;
+  image: string; // Теперь это может быть base64 dataURL
   description: string;
   category: string;
   inStock: boolean;
@@ -16,12 +16,10 @@ export interface User {
   id: number;
   username: string;
   isAdmin: boolean;
-  // Убраны balance, referrals, referralLink
 }
 
 export enum View {
-  HOME = 'HOME',
-  SEARCH = 'SEARCH',
+  ITEMS = 'ITEMS',  // Вместо HOME и SEARCH
   CART = 'CART',
   PROFILE = 'PROFILE',
   ADMIN = 'ADMIN'
@@ -35,7 +33,7 @@ export enum OrderStatus {
 
 export interface Order {
   id: string;
-  userId: number; // Изменено на number (ID из БД)
+  userId: number;
   username: string;
   items: CartItem[];
   totalAmount: number;
