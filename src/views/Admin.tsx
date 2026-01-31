@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Check, Ban, Package, ClipboardList, Trash2 } from 'lucide-react';
+import { Plus, X, Check, Ban, Package, ClipboardList, Trash2, Upload } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus } from '../types';
+
+// ТВОЙ CLOUDINARY (безопасно, т.к. unsigned preset только для загрузки фото)
+const CLOUDINARY_CLOUD_NAME = 'dpghjapcd';
+const CLOUDINARY_UPLOAD_PRESET = 'nextgear_unsigned';
 
 enum AdminTab {
   INVENTORY = 'INVENTORY',
@@ -9,9 +13,10 @@ enum AdminTab {
 }
 
 const Admin: React.FC = () => {
-  const { products, addProduct, removeProduct, orders, processOrder } = useStore(); // Добавлен removeProduct
+  const { products, addProduct, removeProduct, orders, processOrder } = useStore();
   const [activeTab, setActiveTab] = useState<AdminTab>(AdminTab.ORDERS);
   const [isAdding, setIsAdding] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
   const pendingOrders = orders.filter(o => o.status === OrderStatus.PENDING);
@@ -31,18 +36,45 @@ const Admin: React.FC = () => {
     }
   }, [notification]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Загрузка фото напрямую в Cloudinary (не через твой бэкенд!)
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image too large. Max 5MB');
-        return;
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Max 5MB');
+      return;
+    }
+
+    setUploading(true);
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+      
+      const data = await response.json();
+      if (data.secure_url) {
+        // Сразу получаем оптимизированный URL
+        const optimizedUrl = data.secure_url.replace('/upload/', '/upload/w_800,q_auto/');
+        setNewItem(prev => ({ ...prev, image: optimizedUrl }));
+        setNotification({ message: 'Image uploaded!', type: 'success' });
+      } else {
+        throw new Error('Upload failed');
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewItem(prev => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Upload error:', error);
+      setNotification({ message: 'Upload failed. Check preset settings.', type: 'error' });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -54,7 +86,7 @@ const Admin: React.FC = () => {
       id: Date.now().toString(),
       name: newItem.name,
       price: Number(newItem.price),
-      image: newItem.image,
+      image: newItem.image, // Это уже URL с Cloudinary
       category: newItem.category || 'General',
       description: newItem.description || 'No description',
       inStock: true
@@ -65,8 +97,8 @@ const Admin: React.FC = () => {
     setNotification({ message: 'Item added', type: 'success' });
   };
 
-  // Обработчик удаления
   const handleDeleteProduct = async (productId: string, productName: string) => {
+    if (!confirm(`Delete "${productName}"?`)) return;
     try {
       await removeProduct(productId);
       setNotification({ message: `Deleted: ${productName}`, type: 'success' });
@@ -84,7 +116,7 @@ const Admin: React.FC = () => {
   };
 
   return (
-    <div className="p-4 space-y-4 relative">
+    <div className="p-4 space-y-4 relative pb-24">
       {notification && (
         <div className={`fixed top-4 left-4 right-4 z-50 p-4 rounded-xl ${
           notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
@@ -115,7 +147,7 @@ const Admin: React.FC = () => {
       {activeTab === AdminTab.INVENTORY ? (
         <>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold">Add New Item</h2>
+            <h2 className="text-lg font-bold">Inventory</h2>
             <button 
               onClick={() => setIsAdding(!isAdding)}
               className="bg-red-600 p-2 rounded-lg"
@@ -150,16 +182,24 @@ const Admin: React.FC = () => {
                 onChange={e => setNewItem({...newItem, category: e.target.value})}
               />
               
+              {/* Загрузка фото */}
               <div className="space-y-2">
                 <label className="block text-sm text-neutral-400">Product Image</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-red-600 file:text-white"
-                />
+                <label className={`w-full bg-black border border-neutral-800 rounded-lg p-3 flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
+                  <Upload size={20} className="text-neutral-500" />
+                  <span className="text-sm text-neutral-400">
+                    {uploading ? 'Uploading to Cloud...' : newItem.image ? 'Change image' : 'Choose file'}
+                  </span>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
                 {newItem.image && (
-                  <img src={newItem.image} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
+                  <img src={newItem.image} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
                 )}
               </div>
 
@@ -170,29 +210,34 @@ const Admin: React.FC = () => {
                 onChange={e => setNewItem({...newItem, description: e.target.value})}
               />
               
-              <button type="submit" className="w-full bg-red-600 text-white font-bold py-3 rounded-xl">
-                Add Product
+              <button 
+                type="submit" 
+                disabled={uploading || !newItem.image}
+                className="w-full bg-red-600 text-white font-bold py-3 rounded-xl disabled:opacity-50"
+              >
+                {uploading ? 'Uploading...' : 'Add Product'}
               </button>
             </form>
           )}
 
-          {/* Сетка товаров с кнопкой удаления */}
           <div className="grid grid-cols-2 gap-4">
             {products.map(p => (
               <div key={p.id} className="bg-neutral-900 rounded-xl p-3 relative group">
-                {/* Кнопка удаления (мусорка) */}
                 <button
                   onClick={() => handleDeleteProduct(p.id, p.name)}
                   className="absolute top-2 right-2 z-10 bg-red-600/80 hover:bg-red-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete item"
                 >
                   <Trash2 size={16} />
                 </button>
                 
-                {p.image && (
-                  <img src={p.image} alt={p.name} className="w-full h-32 object-cover rounded-lg mb-2" />
+                {p.image ? (
+                  <img src={p.image} alt={p.name} className="w-full h-32 object-cover rounded-lg mb-2 bg-neutral-800" loading="lazy" />
+                ) : (
+                  <div className="w-full h-32 bg-neutral-800 rounded-lg mb-2 flex items-center justify-center text-neutral-600 text-xs">
+                    No Image
+                  </div>
                 )}
-                <p className="font-bold truncate">{p.name}</p>
+                <p className="font-bold text-sm truncate">{p.name}</p>
                 <p className="text-sm text-neutral-400">{p.price} BYN</p>
               </div>
             ))}
@@ -214,12 +259,17 @@ const Admin: React.FC = () => {
               <p className="font-bold mb-2">@{order.username}</p>
               <div className="space-y-1 mb-3">
                 {order.items.map((item, i) => (
-                  <div key={i} className="text-sm text-neutral-300">
-                    {item.name} x{item.quantity}
+                  <div key={i} className="flex items-center gap-2">
+                    {item.image && (
+                      <img src={item.image} alt="" className="w-8 h-8 rounded object-cover bg-neutral-800" />
+                    )}
+                    <span className="text-sm text-neutral-300">
+                      {item.name} x{item.quantity}
+                    </span>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between items-center mb-3">
+              <div className="flex justify-between items-center mb-3 pt-2 border-t border-neutral-800">
                 <span className="text-sm text-neutral-400">Total</span>
                 <span className="font-bold">{order.totalAmount} BYN</span>
               </div>
@@ -239,7 +289,7 @@ const Admin: React.FC = () => {
               </div>
             </div>
           ))}
-          {pendingOrders.length === 0 && <p className="text-neutral-500 text-center">No pending orders</p>}
+          {pendingOrders.length === 0 && <p className="text-neutral-500 text-center py-8">No pending orders</p>}
         </div>
       )}
     </div>
