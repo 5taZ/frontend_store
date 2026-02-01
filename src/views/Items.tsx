@@ -5,7 +5,7 @@ import ProductCard from '../components/ProductCard';
 import ProductRequestForm from '../components/ProductRequestForm';
 
 const Items: React.FC = () => {
-  const { products, addToCart, user } = useStore();
+  const { products, addToCart, user, cart } = useStore(); // ✅ Добавлен cart
   const [searchQuery, setSearchQuery] = useState('');
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
 
@@ -17,7 +17,6 @@ const Items: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6">
-      {/* Заголовок и поиск */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -49,7 +48,6 @@ const Items: React.FC = () => {
         </div>
       </div>
 
-      {/* Результаты поиска */}
       {filteredProducts.length === 0 && searchQuery.trim() !== '' ? (
         <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-neutral-900/50 rounded-3xl border border-neutral-800/50 space-y-4">
           <div className="w-20 h-20 bg-neutral-800/80 rounded-full flex items-center justify-center mb-2">
@@ -86,6 +84,7 @@ const Items: React.FC = () => {
               key={product.id}
               product={product}
               onAddToCart={addToCart}
+              isInCart={cart.some(item => item.id === product.id)} // ✅ Проверяем, есть ли в корзине
             />
           ))}
         </div>
