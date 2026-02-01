@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Minus } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -12,53 +12,78 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const displayQuantity = product.quantity !== undefined ? product.quantity : null;
 
   return (
-    <div className="bg-neutral-900 rounded-xl border border-neutral-800 overflow-hidden active:scale-95 transition-transform">
-      <div className="aspect-square bg-neutral-800 relative">
+    <div className="bg-neutral-900 rounded-2xl border border-neutral-800 overflow-hidden group hover:border-neutral-700 transition-all duration-300 hover:shadow-xl hover:shadow-black/20 active:scale-[0.98]">
+      {/* Изображение */}
+      <div className="aspect-square bg-neutral-800/50 relative overflow-hidden">
         {product.image ? (
           <img 
             src={product.image} 
             alt={product.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-neutral-600 text-xs">
-            No Image
+          <div className="w-full h-full flex items-center justify-center text-neutral-600 bg-neutral-800">
+            <span className="text-xs">Нет фото</span>
           </div>
         )}
         
-        {/* Индикатор "Нет в наличии" */}
+        {/* Градиент overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        
+        {/* Бейдж "Нет в наличии" */}
         {isOutOfStock && (
-          <div className="absolute top-2 right-2 bg-red-600/90 text-white text-xs font-bold px-2 py-1 rounded">
-            Sold Out
+          <div className="absolute top-3 right-3 bg-red-600/95 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg">
+            Нет в наличии
+          </div>
+        )}
+        
+        {/* Бейдж категории */}
+        {product.category && (
+          <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-neutral-300 text-[10px] font-medium px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+            {product.category}
           </div>
         )}
       </div>
-      <div className="p-3">
-        <h3 className="text-sm font-bold text-white truncate">{product.name}</h3>
-        <p className="text-xs text-neutral-400 mt-1 line-clamp-2 h-8">{product.description}</p>
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-baseline gap-2">
-            <span className="text-white font-bold">{product.price} BYN</span>
+      
+      {/* Контент */}
+      <div className="p-4 space-y-3">
+        <div>
+          <h3 className="text-sm font-bold text-white line-clamp-1 mb-1 group-hover:text-red-500 transition-colors">
+            {product.name}
+          </h3>
+          <p className="text-xs text-neutral-400 line-clamp-2 leading-relaxed h-8">
+            {product.description}
+          </p>
+        </div>
+        
+        <div className="flex items-center justify-between pt-2 border-t border-neutral-800/50">
+          <div className="flex flex-col">
+            <span className="text-lg font-bold text-white">{product.price} BYN</span>
             {displayQuantity !== null && (
-              <span className={`text-xs ${
-                isOutOfStock ? 'text-red-500' : 'text-neutral-500'
+              <span className={`text-[10px] font-medium ${
+                isOutOfStock ? 'text-red-500' : displayQuantity <= 3 ? 'text-orange-500' : 'text-emerald-500'
               }`}>
-                ({displayQuantity} pcs)
+                {isOutOfStock 
+                  ? 'Нет на складе' 
+                  : `Кол-во: ${displayQuantity} шт.`
+                }
               </span>
             )}
           </div>
+          
           {onAddToCart && (
             <button
               onClick={() => onAddToCart(product)}
               disabled={isOutOfStock}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`relative p-3 rounded-xl transition-all duration-200 ${
                 isOutOfStock 
-                  ? 'bg-neutral-700 cursor-not-allowed' 
-                  : 'bg-red-600 active:bg-red-700 hover:bg-red-700 text-white'
+                  ? 'bg-neutral-800 cursor-not-allowed text-neutral-600' 
+                  : 'bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-500 hover:shadow-red-500/30 hover:-translate-y-0.5 active:translate-y-0'
               }`}
+              title={isOutOfStock ? 'Нет в наличии' : 'Добавить в корзину'}
             >
-              <Plus size={16} />
+              <Plus size={20} />
             </button>
           )}
         </div>
