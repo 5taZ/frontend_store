@@ -124,12 +124,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               const userIsAdmin = dbUser.is_admin || false;
               setIsAdmin(userIsAdmin);
               
-              // ✅ Добавлена поддержка аватарки из Telegram
               const userData: User = {
                 id: dbUser.id,
                 username: dbUser.username,
                 isAdmin: userIsAdmin,
-                photoUrl: tgUser.photo_url // Получаем фото из Telegram WebApp
+                photoUrl: tgUser.photo_url
               };
               
               setUser(userData);
@@ -145,17 +144,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 id: tgUser.id,
                 username: tgUser.username || 'unknown',
                 isAdmin: false,
-                photoUrl: tgUser.photo_url // ✅ И здесь тоже
+                photoUrl: tgUser.photo_url
               });
             }
           }
         } else {
-          // Dev режим
           setUser({
             id: 999,
             username: 'dev_user',
             isAdmin: true,
-            photoUrl: undefined // В dev режиме без фото
+            photoUrl: undefined
           });
           setIsAdmin(true);
           await refreshProducts();
@@ -253,7 +251,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [refreshProducts]);
 
   const updateProduct = useCallback(async (productId: string, product: Partial<Product>) => {
+    console.log('🔄 updateProduct called:', { productId, product });
+    
     if (product.quantity !== undefined && typeof product.quantity !== 'number') {
+      console.warn('⚠️ Quantity is not a number, converting:', product.quantity);
       product = { ...product, quantity: Number(product.quantity) };
     }
     
@@ -263,8 +264,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     try {
       const result = await api.updateProduct(productId, product);
+      console.log('✅ updateProduct succeeded:', result);
       return result;
     } catch (error) {
+      console.error('❌ updateProduct failed:', error);
       refreshProducts();
       throw error;
     }
@@ -279,6 +282,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const tempOrderId = 'temp-' + Date.now();
     
+    console.log('📦 Starting placeOrder:', { userId: user.id, cartLength: cart.length, total });
+    
     const optimisticOrder: Order = {
       id: tempOrderId,
       userId: user.id,
@@ -292,13 +297,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setOrders(prev => [optimisticOrder, ...prev]);
     setCart([]);
     
+    console.log('✅ Cart cleared, optimistic order added');
+    
     setProducts(prev => {
       const updated = prev
         .map(p => {
           const cartItem = cart.find(item => item.id === p.id);
           if (cartItem) {
             const newQuantity = (p.quantity || 1) - cartItem.quantity;
+            console.log(`📦 Product ${p.name}: ${p.quantity} → ${newQuantity}`);
             if (newQuantity <= 0) {
+              console.log(`🗑️ Product ${p.name} removed (quantity <= 0)`);
               return null;
             }
             return { ...p, quantity: newQuantity };
@@ -307,6 +316,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         })
         .filter((p): p is Product => p !== null);
       
+      console.log(`✅ Products updated: ${updated.length} items remaining`);
       return updated;
     });
 
@@ -316,13 +326,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         id: parseInt(item.id)
       }));
       
+      console.log('📤 Sending to server:', { 
+        user_id: user.id, 
+        items: cartItemsWithNumberId, 
+        total_amount: total 
+      });
+      
       const dbOrder = await api.createOrder(user.id, cartItemsWithNumberId, total);
       
-      setOrders(prev => prev.map(o => 
-        o.id === tempOrderId 
-          ? { ...o, id: dbOrder.id.toString(), date: new Date(dbUser.created_at).getTime() }
-          : o
-      ));
+      console.log('✅ Server response:', dbOrder);
+      
+      setOrders(prev => {
+        const updated = prev.map(o => 
+          o.id === tempOrderId 
+            ? { ...o, id: dbOrder.id.toString(), date: new Date(dbOrder.created_at || Date.now()).getTime() }
+            : o
+        );
+        console.log('✅ Order ID updated:', dbOrder.id);
+        return updated;
+      });
       
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.showPopup) {
@@ -331,23 +353,43 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           message: 'Ваш заказ принят. Товары зарезервированы и ожидают подтверждения.' 
         });
       }
+      
+      console.log('🎉 Order placed successfully!');
     } catch (error: any) {
-      setOrders(prev => prev.filter(o => o.id !== tempOrderId));
+      console.error('❌ Error in placeOrder:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      console.log('🔄 Rolling back changes...');
+      
+      setOrders(prev => {
+        const filtered = prev.filter(o => o.id !== tempOrderId);
+        console.log(`✅ Removed temp order, ${filtered.length} orders remaining`);
+        return filtered;
+      });
       
       setProducts(prev => {
         const restored = [...prev];
+        console.log('🔄 Restoring products...');
+        
         cart.forEach(item => {
           const existing = restored.find(p => p.id === item.id);
           if (existing) {
             existing.quantity = (existing.quantity || 0) + item.quantity;
+            console.log(`📦 Restored ${item.name}: +${item.quantity} → ${existing.quantity}`);
           } else {
             restored.push({ ...item, quantity: item.quantity });
+            console.log(`📦 Added back ${item.name}: ${item.quantity}`);
           }
         });
+        
+        console.log(`✅ Products restored: ${restored.length} items`);
         return restored;
       });
       
       setCart(cart);
+      console.log('✅ Cart restored');
+      
       alert(`Не удалось оформить заказ: ${error.message || 'Неизвестная ошибка'}. Пожалуйста, попробуйте снова.`);
       throw error;
     }
@@ -398,12 +440,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const requestProduct = useCallback(async (productName: string, quantity: number, image?: string) => {
     if (!user) {
+      console.error('❌ Cannot request product: no user');
       alert('Вы должны войти в систему, чтобы запросить товар');
       return;
     }
     
     try {
-      await api.requestProduct(user.id, productName, quantity, image);
+      console.log('📤 Sending product request:', { 
+        userId: user.id, 
+        productName, 
+        quantity, 
+        image
+      });
+      
+      const result = await api.requestProduct(user.id, productName, quantity, image);
+      
+      console.log('✅ Product request successful:', result);
       
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.showPopup) {
@@ -414,7 +466,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       
       await refreshProductRequests();
+      
+      console.log('✅ Product request flow completed');
     } catch (error: any) {
+      console.error('❌ Product request error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
       alert(`Не удалось запросить товар: ${error.message || 'Неизвестная ошибка'}`);
     }
   }, [user]);
@@ -425,6 +483,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const status = approved ? 'approved' : 'rejected';
       await api.processProductRequest(requestId, status as any);
+      
       await refreshProductRequests();
     } catch (error: any) {
       alert(`Не удалось обработать запрос: ${error.message || 'Неизвестная ошибка'}`);
