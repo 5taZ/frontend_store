@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import Layout from './components/Layout';
 import Items from './views/Items';
@@ -8,8 +8,7 @@ import Admin from './views/Admin';
 import { View } from './types';
 
 const AppContent: React.FC = () => {
-  const { user, cart } = useStore();
-  const [currentView, setCurrentView] = useState<View>(View.ITEMS);
+  const { user, cart, currentView, setCurrentView } = useStore();
 
   if (!user) {
     return (
