@@ -1,9 +1,10 @@
 import React from 'react';
 import { Trash2, ShoppingBag, ArrowRight, Package, Shield } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { View } from '../types';
 
 const Cart: React.FC = () => {
-  const { cart, removeFromCart, placeOrder } = useStore();
+  const { cart, removeFromCart, placeOrder, setCurrentView } = useStore();
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -25,12 +26,13 @@ const Cart: React.FC = () => {
         
         <h2 className="text-2xl font-bold text-white mb-3">Ваша корзина пуста</h2>
         <p className="text-neutral-400 max-w-xs mx-auto leading-relaxed mb-8">
-          Видимо вы ничего не выбрали. Перейдите в каталог, чтобы добавить товары.
+          Видимо вы ничего не выбрали
         </p>
         
+        {/* Рабочая кнопка */}
         <button 
-          onClick={() => window.history.back()}
-          className="group flex items-center gap-2 text-red-500 hover:text-red-400 transition-colors font-medium"
+          onClick={() => setCurrentView(View.ITEMS)}
+          className="group flex items-center gap-2 bg-neutral-900 hover:bg-red-600 text-white px-6 py-3 rounded-xl border border-neutral-800 hover:border-red-600 transition-all duration-300 font-medium"
         >
           <span>Вернуться к покупкам</span>
           <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -41,7 +43,6 @@ const Cart: React.FC = () => {
 
   return (
     <div className="p-4 pt-6 h-full flex flex-col max-w-lg mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-800/50">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Корзина</h1>
@@ -52,15 +53,12 @@ const Cart: React.FC = () => {
         </div>
       </div>
       
-      {/* Cart Items */}
       <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-4">
         {cart.map((item, index) => (
           <div 
             key={item.id} 
-            className="group bg-neutral-900/50 backdrop-blur-sm p-4 rounded-2xl flex items-center gap-4 border border-neutral-800 hover:border-neutral-700 transition-all duration-300 hover:shadow-lg hover:shadow-black/20"
-            style={{ animationDelay: `${index * 50}ms` }}
+            className="group bg-neutral-900/50 backdrop-blur-sm p-4 rounded-2xl flex items-center gap-4 border border-neutral-800 hover:border-neutral-700 transition-all duration-300"
           >
-            {/* Image */}
             <div className="relative">
               {item.image ? (
                 <img 
@@ -78,7 +76,6 @@ const Cart: React.FC = () => {
               </div>
             </div>
             
-            {/* Info */}
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-bold text-white line-clamp-1 mb-1 group-hover:text-red-500 transition-colors">
                 {item.name}
@@ -91,7 +88,6 @@ const Cart: React.FC = () => {
               </div>
             </div>
             
-            {/* Price & Actions */}
             <div className="flex flex-col items-end gap-3">
               <div className="text-white font-bold text-lg">
                 {(item.price * item.quantity).toFixed(2)} BYN
@@ -108,9 +104,7 @@ const Cart: React.FC = () => {
         ))}
       </div>
 
-      {/* Checkout Section */}
       <div className="mt-4 bg-gradient-to-br from-neutral-900 to-neutral-900/50 p-6 rounded-3xl border border-neutral-800 shadow-2xl shadow-black/20">
-        {/* Total Calculation */}
         <div className="space-y-3 mb-6 pb-6 border-b border-neutral-800/50">
           <div className="flex justify-between items-center text-sm">
             <span className="text-neutral-400">Товары ({totalItems})</span>
@@ -126,16 +120,14 @@ const Cart: React.FC = () => {
           </div>
         </div>
 
-        {/* Checkout Button */}
         <button
           onClick={handleCheckout}
-          className="group w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:from-red-500 hover:to-red-600 transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-red-500/30 hover:-translate-y-0.5 active:translate-y-0"
+          className="group w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:from-red-500 hover:to-red-600 transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-red-500/30"
         >
           <span className="text-base">Оформить заказ</span>
           <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </button>
 
-        {/* Security Note */}
         <div className="flex items-center justify-center gap-2 mt-4 text-[11px] text-neutral-500">
           <Shield size={12} />
           <span>Товары будут зарезервированы сразу после оформления</span>
