@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { Product, CartItem, User, Order, OrderStatus, ProductRequest } from '../types';
+import { Product, CartItem, User, Order, OrderStatus, ProductRequest, View } from '../types'; // Добавьте View в импорт
 import { api } from '../api';
 
 interface StoreContextType {
@@ -8,6 +8,8 @@ interface StoreContextType {
   user: User | null;
   orders: Order[];
   productRequests: ProductRequest[];
+  currentView: View;                    // ✅ ДОБАВИТЬ
+  setCurrentView: (view: View) => void; // ✅ ДОБАВИТЬ
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
@@ -36,6 +38,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [productRequests, setProductRequests] = useState<ProductRequest[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentView, setCurrentView] = useState<View>(View.ITEMS); // ✅ ДОБАВИТЬ состояние
 
   const loadOrders = useCallback(async (userId: number, adminStatus: boolean) => {
     try {
@@ -226,7 +229,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [refreshProducts]);
 
-  // ✅ НОВОЕ: Обновление товара с логированием и преобразованием quantity
   const updateProduct = useCallback(async (productId: string, product: Partial<Product>) => {
     console.log('🔄 updateProduct called:', { productId, product });
     
@@ -235,7 +237,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       product = { ...product, quantity: Number(product.quantity) };
     }
     
-    // Оптимистично обновляем в UI
     setProducts(prev => prev.map(p => 
       p.id === productId ? { ...p, ...product } : p
     ));
@@ -246,7 +247,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return result;
     } catch (error) {
       console.error('❌ updateProduct failed:', error);
-      // Откат при ошибке
       refreshProducts();
       throw error;
     }
@@ -261,8 +261,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const tempOrderId = 'temp-' + Date.now();
     
-    console.log('📦 Starting placeOrder:', { userId: user.id, cartLength: cart.length, total });
-    
     const optimisticOrder: Order = {
       id: tempOrderId,
       userId: user.id,
@@ -276,17 +274,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setOrders(prev => [optimisticOrder, ...prev]);
     setCart([]);
     
-    console.log('✅ Cart cleared, optimistic order added');
-    
     setProducts(prev => {
       const updated = prev
         .map(p => {
           const cartItem = cart.find(item => item.id === p.id);
           if (cartItem) {
             const newQuantity = (p.quantity || 1) - cartItem.quantity;
-            console.log(`📦 Product ${p.name}: ${p.quantity} → ${newQuantity}`);
             if (newQuantity <= 0) {
-              console.log(`🗑️ Product ${p.name} removed (quantity <= 0)`);
               return null;
             }
             return { ...p, quantity: newQuantity };
@@ -295,7 +289,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         })
         .filter((p): p is Product => p !== null);
       
-      console.log(`✅ Products updated: ${updated.length} items remaining`);
       return updated;
     });
 
@@ -305,25 +298,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         id: parseInt(item.id)
       }));
       
-      console.log('📤 Sending to server:', { 
-        user_id: user.id, 
-        items: cartItemsWithNumberId, 
-        total_amount: total 
-      });
-      
       const dbOrder = await api.createOrder(user.id, cartItemsWithNumberId, total);
       
-      console.log('✅ Server response:', dbOrder);
-      
-      setOrders(prev => {
-        const updated = prev.map(o => 
-          o.id === tempOrderId 
-            ? { ...o, id: dbOrder.id.toString(), date: new Date(dbOrder.created_at).getTime() }
-            : o
-        );
-        console.log('✅ Order ID updated:', dbOrder.id);
-        return updated;
-      });
+      setOrders(prev => prev.map(o => 
+        o.id === tempOrderId 
+          ? { ...o, id: dbOrder.id.toString(), date: new Date(dbOrder.created_at).getTime() }
+          : o
+      ));
       
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.showPopup) {
@@ -332,42 +313,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           message: 'Your order has been sent. Items reserved awaiting confirmation.' 
         });
       }
-      
-      console.log('🎉 Order placed successfully!');
     } catch (error: any) {
       console.error('❌ Error in placeOrder:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
       
-      console.log('🔄 Rolling back changes...');
-      
-      setOrders(prev => {
-        const filtered = prev.filter(o => o.id !== tempOrderId);
-        console.log(`✅ Removed temp order, ${filtered.length} orders remaining`);
-        return filtered;
-      });
+      setOrders(prev => prev.filter(o => o.id !== tempOrderId));
       
       setProducts(prev => {
         const restored = [...prev];
-        console.log('🔄 Restoring products...');
         
         cart.forEach(item => {
           const existing = restored.find(p => p.id === item.id);
           if (existing) {
             existing.quantity = (existing.quantity || 0) + item.quantity;
-            console.log(`📦 Restored ${item.name}: +${item.quantity} → ${existing.quantity}`);
           } else {
             restored.push({ ...item, quantity: item.quantity });
-            console.log(`📦 Added back ${item.name}: ${item.quantity}`);
           }
         });
         
-        console.log(`✅ Products restored: ${restored.length} items`);
         return restored;
       });
       
       setCart(cart);
-      console.log('✅ Cart restored');
       
       alert(`Failed to place order: ${error.message || 'Unknown error'}. Please try again.`);
     }
@@ -424,33 +390,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     
     try {
-      console.log('📤 Sending product request:', { 
-        userId: user.id, 
-        productName, 
-        quantity, 
-        image
-      });
-      
-      const result = await api.requestProduct(user.id, productName, quantity, image);
-      
-      console.log('✅ Product request successful:', result);
+      await api.requestProduct(user.id, productName, quantity, image);
       
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.showPopup) {
         tg.showPopup({
           title: 'Request Sent',
-          message: 'Your product request has been sent to the admin. You will be notified when it is processed.'
+          message: 'Your product request has been sent to the admin.'
         });
       }
       
       await refreshProductRequests();
-      
-      console.log('✅ Product request flow completed');
     } catch (error: any) {
-      console.error('❌ Product request error:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-      
       alert(`Failed to request product: ${error.message || 'Unknown error'}`);
     }
   }, [user]);
@@ -461,7 +412,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const status = approved ? 'approved' : 'rejected';
       await api.processProductRequest(requestId, status as any);
-      
       await refreshProductRequests();
     } catch (error: any) {
       alert(`Failed to process request: ${error.message || 'Unknown error'}`);
@@ -503,6 +453,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         user,
         orders,
         productRequests,
+        currentView,      // ✅ ДОБАВИТЬ
+        setCurrentView,   // ✅ ДОБАВИТЬ
         addToCart,
         removeFromCart,
         clearCart,
