@@ -5,11 +5,11 @@ import {
   XCircle, 
   Package, 
   Ban, 
-  User, 
   ShoppingBag, 
   Calendar,
   ArrowRight,
-  Shield
+  Shield,
+  User
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus, View } from '../types';
@@ -56,12 +56,34 @@ const Profile: React.FC = () => {
         <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/10 rounded-full blur-3xl -mr-16 -mt-16" />
         
         <div className="relative flex items-center gap-4">
+          {/* ✅ Аватарка с поддержкой фото из Telegram */}
           <div className="relative">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-red-600/20">
-              {user.username.charAt(0).toUpperCase()}
-            </div>
+            {user.photoUrl ? (
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-red-600/30 shadow-lg shadow-red-600/20">
+                <img 
+                  src={user.photoUrl} 
+                  alt={user.username}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Если фото не загрузилось (ссылка протухла), скрываем img и показываем fallback
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.classList.add('bg-gradient-to-br', 'from-red-600', 'to-red-700', 'flex', 'items-center', 'justify-center');
+                      parent.innerHTML = `<span class="text-3xl font-bold text-white">${user.username.charAt(0).toUpperCase()}</span>`;
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-red-600/20">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            )}
+            
             {user.isAdmin && (
-              <div className="absolute -bottom-1 -right-1 bg-neutral-950 rounded-full p-1">
+              <div className="absolute -bottom-1 -right-1 bg-neutral-950 rounded-full p-1 border border-neutral-800">
                 <Shield size={16} className="text-red-500 fill-red-500" />
               </div>
             )}
