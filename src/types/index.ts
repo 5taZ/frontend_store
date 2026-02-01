@@ -17,6 +17,7 @@ export interface User {
   id: number;
   username: string;
   isAdmin: boolean;
+  photoUrl?: string; // ✅ Добавлено поле для аватарки
 }
 
 export enum View {
@@ -42,9 +43,6 @@ export interface Order {
   date: number;
 }
 
-// ✅ УДАЛЕНО: Интерфейс уведомлений
-
-// ✅ Запросы на товары
 export interface ProductRequest {
   id: string;
   userId: number;
