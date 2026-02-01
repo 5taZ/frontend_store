@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Upload, X } from 'lucide-react';
+import { Package, Upload, X, Check, Loader2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
 interface ProductRequestFormProps {
@@ -11,7 +11,7 @@ interface ProductRequestFormProps {
 const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '', isOpen, onClose }) => {
   const { requestProduct } = useStore();
   const [uploading, setUploading] = useState(false);
-  
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     productName: productName,
     quantity: '1',
@@ -24,7 +24,7 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Max 5MB');
+      alert('Максимальный размер файла — 5MB');
       return;
     }
 
@@ -52,7 +52,7 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Upload failed. Please try again.');
+      alert('Ошибка загрузки. Попробуйте снова.');
     } finally {
       setUploading(false);
     }
@@ -62,48 +62,64 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
     e.preventDefault();
     
     if (!formData.productName.trim()) {
-      alert('Please enter product name');
+      alert('Пожалуйста, введите название товара');
       return;
     }
 
-    await requestProduct(
-      formData.productName.trim(),
-      parseInt(formData.quantity),
-      formData.image || undefined
-    );
+    setSubmitting(true);
     
-    setFormData({ productName: productName, quantity: '1', image: '' });
-    onClose();
+    try {
+      await requestProduct(
+        formData.productName.trim(),
+        parseInt(formData.quantity),
+        formData.image || undefined
+      );
+      
+      setFormData({ productName: productName, quantity: '1', image: '' });
+      onClose();
+    } catch (error) {
+      alert('Ошибка отправки запроса');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-neutral-900 rounded-2xl w-full max-w-md p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"
-        >
-          <X size={24} />
-        </button>
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-neutral-900 rounded-3xl w-full max-w-md relative border border-neutral-800 shadow-2xl">
+        {/* Header */}
+        <div className="relative pt-6 pb-4 px-6 border-b border-neutral-800">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-full transition-all"
+          >
+            <X size={20} />
+          </button>
 
-        <h2 className="text-2xl font-bold text-white mb-2 text-center">
-          Product Not Found?
-        </h2>
-        <p className="text-sm text-neutral-400 text-center mb-6">
-          Request the product and we'll notify you when it's available
-        </p>
+          <div className="text-center">
+            <div className="w-12 h-12 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Package className="text-red-500" size={24} />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Не нашли нужный товар?
+            </h2>
+            <p className="text-sm text-neutral-400">
+              Отправьте запрос, и мы добавим товар в каталог или свяжемся с вами
+            </p>
+          </div>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-sm text-neutral-400 mb-2">
-              Product Name <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Название товара <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              placeholder="Enter product name..."
-              className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
+              placeholder="Например: iPhone 15 Pro Max..."
+              className="w-full bg-black border border-neutral-800 rounded-xl p-3.5 text-white placeholder-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
               value={formData.productName}
               onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
               required
@@ -112,29 +128,50 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-400 mb-2">
-              Quantity <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Количество <span className="text-red-500">*</span>
             </label>
-            <input
-              type="number"
-              placeholder="1"
-              min="1"
-              className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-red-600"
-              value={formData.quantity}
-              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-              required
-            />
+            <div className="relative">
+              <input
+                type="number"
+                min="1"
+                placeholder="1"
+                className="w-full bg-black border border-neutral-800 rounded-xl p-3.5 text-white placeholder-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                required
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">шт.</span>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-400 mb-2">
-              Product Image (Optional)
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Фото товара (опционально)
             </label>
-            <label className={`w-full bg-black border border-neutral-800 rounded-lg p-3 flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
-              <Upload size={20} className="text-neutral-500" />
-              <span className="text-sm text-neutral-400">
-                {uploading ? 'Uploading...' : formData.image ? 'Change image' : 'Upload image (optional)'}
-              </span>
+            <label 
+              className={`
+                w-full bg-black border-2 border-dashed border-neutral-800 rounded-xl p-4 
+                flex flex-col items-center gap-2 cursor-pointer hover:border-neutral-600 hover:bg-neutral-900/50 transition-all
+                ${uploading ? 'opacity-50 cursor-wait' : ''}
+                ${formData.image ? 'border-emerald-600/50 bg-emerald-600/5' : ''}
+              `}
+            >
+              {formData.image ? (
+                <>
+                  <Check size={24} className="text-emerald-500" />
+                  <span className="text-sm text-emerald-500 font-medium">Фото загружено</span>
+                  <span className="text-xs text-neutral-500">Нажмите, чтобы изменить</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={24} className={uploading ? 'animate-bounce text-neutral-500' : 'text-neutral-500'} />
+                  <span className="text-sm text-neutral-400">
+                    {uploading ? 'Загрузка...' : 'Загрузить фото'}
+                  </span>
+                  <span className="text-xs text-neutral-600">PNG, JPG до 5MB</span>
+                </>
+              )}
               <input 
                 type="file" 
                 accept="image/*"
@@ -143,22 +180,47 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
                 className="hidden"
               />
             </label>
+            
             {formData.image && (
-              <img 
-                src={formData.image} 
-                alt="Preview" 
-                className="w-full h-40 object-cover rounded-lg mt-2" 
-              />
+              <div className="mt-3 relative rounded-xl overflow-hidden border border-neutral-800">
+                <img 
+                  src={formData.image} 
+                  alt="Preview" 
+                  className="w-full h-48 object-cover" 
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
+                  className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-red-600 rounded-full text-white transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={uploading || !formData.productName.trim()}
-            className="w-full bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            Send Request
-          </button>
+          <div className="pt-2 space-y-3">
+            <button
+              type="submit"
+              disabled={uploading || submitting || !formData.productName.trim()}
+              className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-bold py-4 rounded-xl hover:from-red-500 hover:to-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/20 flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <Package size={20} />
+              )}
+              {submitting ? 'Отправка...' : 'Отправить запрос'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-3 text-neutral-400 hover:text-white text-sm font-medium transition-colors"
+            >
+              Отмена
+            </button>
+          </div>
         </form>
       </div>
     </div>
