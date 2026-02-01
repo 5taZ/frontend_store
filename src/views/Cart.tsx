@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trash2, ShoppingBag, ArrowRight, Package, Shield } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { View } from '../types';
+import { View } from '../types'; // ✅ Добавьте импорт View
 
 const Cart: React.FC = () => {
   const { cart, removeFromCart, placeOrder, setCurrentView } = useStore();
@@ -9,9 +9,17 @@ const Cart: React.FC = () => {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) return;
-    placeOrder();
+    
+    try {
+      await placeOrder();
+      // ✅ После успешного заказа перекидываем в профиль
+      setCurrentView(View.PROFILE);
+    } catch (error) {
+      // Ошибка уже обработана в placeOrder (alert)
+      console.error('Order failed:', error);
+    }
   };
 
   if (cart.length === 0) {
@@ -29,7 +37,6 @@ const Cart: React.FC = () => {
           Видимо вы ничего не выбрали
         </p>
         
-        {/* Рабочая кнопка */}
         <button 
           onClick={() => setCurrentView(View.ITEMS)}
           className="group flex items-center gap-2 bg-neutral-900 hover:bg-red-600 text-white px-6 py-3 rounded-xl border border-neutral-800 hover:border-red-600 transition-all duration-300 font-medium"
@@ -81,10 +88,34 @@ const Cart: React.FC = () => {
                 {item.name}
               </h3>
               <p className="text-xs text-neutral-500 mb-2">{item.price} BYN за шт.</p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-neutral-400 bg-neutral-800/80 px-2 py-1 rounded-lg border border-neutral-700/50">
-                  Кол-во: {item.quantity} шт.
-                </span>
+              
+              {/* ✅ Управление количеством в корзине */}
+              <div className="flex items-center gap-2 bg-neutral-950 rounded-xl px-2 py-1.5 w-fit border border-neutral-800">
+                <button 
+                  onClick={() => {
+                    if (item.quantity > 1) {
+                      // Уменьшаем количество на 1
+                      // Используем ваш существующий механизм, 
+                      // например removeFromCart для полного удаления при 0
+                      // или логику обновления количества если она есть в контексте
+                    } else {
+                      removeFromCart(item.id);
+                    }
+                  }}
+                  className="p-1 hover:bg-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-colors"
+                >
+                  <span className="text-sm font-bold">−</span>
+                </button>
+                <span className="text-sm font-bold text-white w-6 text-center">{item.quantity}</span>
+                <button 
+                  onClick={() => {
+                    // Добавляем еще один (если есть в наличии)
+                    // Можно вызвать addToCart снова или иметь отдельную функцию updateQuantity
+                  }}
+                  className="p-1 hover:bg-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-colors"
+                >
+                  <span className="text-sm font-bold">+</span>
+                </button>
               </div>
             </div>
             
