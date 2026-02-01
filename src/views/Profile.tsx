@@ -8,8 +8,7 @@ import {
   ShoppingBag, 
   Calendar,
   ArrowRight,
-  Shield,
-  User
+  Shield
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus, View } from '../types';
@@ -56,7 +55,7 @@ const Profile: React.FC = () => {
         <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/10 rounded-full blur-3xl -mr-16 -mt-16" />
         
         <div className="relative flex items-center gap-4">
-          {/* ✅ Аватарка с поддержкой фото из Telegram */}
+          {/* Аватарка с поддержкой фото из Telegram */}
           <div className="relative">
             {user.photoUrl ? (
               <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-red-600/30 shadow-lg shadow-red-600/20">
@@ -65,7 +64,6 @@ const Profile: React.FC = () => {
                   alt={user.username}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Если фото не загрузилось (ссылка протухла), скрываем img и показываем fallback
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
                     const parent = target.parentElement;
@@ -141,26 +139,26 @@ const Profile: React.FC = () => {
         </div>
         
         {userOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-neutral-900/50 rounded-3xl border border-neutral-800/50 space-y-4">
-            <div className="relative">
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-neutral-900/50 rounded-3xl border border-neutral-800/50">
+            <div className="relative mb-6">
               <div className="absolute inset-0 bg-red-600/20 blur-2xl rounded-full" />
               <div className="relative w-20 h-20 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800">
                 <Package size={32} className="text-neutral-500" />
               </div>
             </div>
-            <div>
-              <h4 className="text-xl font-bold text-white mb-2">Еще нет заказов</h4>
-              <p className="text-neutral-400 max-w-xs mx-auto mb-6">
-                Начните покупать товары, чтобы увидеть историю здесь
-              </p>
-              <button 
-                onClick={() => setCurrentView(View.ITEMS)}
-                className="group flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30"
-              >
-                <span>Перейти к покупкам</span>
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
+            
+            <h4 className="text-xl font-bold text-white mb-2">Еще нет заказов</h4>
+            <p className="text-neutral-400 max-w-xs mx-auto mb-6">
+              Начните покупать товары, чтобы увидеть историю здесь
+            </p>
+            
+            <button 
+              onClick={() => setCurrentView(View.ITEMS)}
+              className="group inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30 active:scale-95"
+            >
+              <span>Перейти к покупкам</span>
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -177,7 +175,8 @@ const Profile: React.FC = () => {
                   {/* Order Header */}
                   <div className="p-4 border-b border-neutral-800/50 flex items-center justify-between bg-neutral-900/30">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-neutral-800 rounded-xl flex items-center justify-center font-mono font-bold text-sm text-neutral-400 border border-neutral-700">
+                      {/* Исправлен размер блока номера заказа */}
+                      <div className="w-12 h-12 bg-neutral-800 rounded-xl flex items-center justify-center font-mono font-bold text-xs text-neutral-400 border border-neutral-700 shrink-0">
                         #{orderNumber}
                       </div>
                       <div>
@@ -187,7 +186,7 @@ const Profile: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                    <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0">
                       <Calendar size={12} />
                       {new Date(order.date).toLocaleDateString('ru-RU', {
                         day: '2-digit',
@@ -222,7 +221,7 @@ const Profile: React.FC = () => {
                             {item.quantity} шт. × {item.price} BYN
                           </p>
                         </div>
-                        <div className="text-sm font-bold text-white">
+                        <div className="text-sm font-bold text-white shrink-0">
                           {(item.price * item.quantity).toFixed(2)} BYN
                         </div>
                       </div>
@@ -241,7 +240,7 @@ const Profile: React.FC = () => {
                     {order.status === OrderStatus.PENDING && (
                       <button
                         onClick={() => cancelOrder(order.id)}
-                        className="group/btn flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-red-600/20 hover:border-red-600/50 border border-neutral-700 rounded-xl text-sm text-neutral-400 hover:text-red-500 transition-all duration-300"
+                        className="group/btn flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-red-600/20 hover:border-red-600/50 border border-neutral-700 rounded-xl text-sm text-neutral-400 hover:text-red-500 transition-all duration-300 shrink-0"
                       >
                         <Ban size={14} />
                         <span className="font-medium">Отменить</span>
