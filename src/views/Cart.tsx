@@ -1,11 +1,12 @@
 import React from 'react';
-import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, Package, Shield } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
 const Cart: React.FC = () => {
   const { cart, removeFromCart, placeOrder } = useStore();
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
@@ -14,60 +15,131 @@ const Cart: React.FC = () => {
 
   if (cart.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh] p-4 text-center">
-        <div className="bg-neutral-900 p-6 rounded-full mb-4 border border-neutral-800">
-          <ShoppingBag size={48} className="text-neutral-500" />
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 bg-red-600/20 blur-3xl rounded-full" />
+          <div className="relative bg-neutral-900/80 backdrop-blur-sm p-8 rounded-full border border-neutral-800 shadow-2xl">
+            <ShoppingBag size={56} className="text-neutral-400" strokeWidth={1.5} />
+          </div>
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Your Cart is Empty</h2>
-        <p className="text-neutral-400">Looks like you haven't added any gear yet.</p>
+        
+        <h2 className="text-2xl font-bold text-white mb-3">Ваша корзина пуста</h2>
+        <p className="text-neutral-400 max-w-xs mx-auto leading-relaxed mb-8">
+          Видимо вы ничего не выбрали. Перейдите в каталог, чтобы добавить товары.
+        </p>
+        
+        <button 
+          onClick={() => window.history.back()}
+          className="group flex items-center gap-2 text-red-500 hover:text-red-400 transition-colors font-medium"
+        >
+          <span>Вернуться к покупкам</span>
+          <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pt-6 h-full flex flex-col">
-      <h1 className="text-2xl font-bold text-white mb-6">Shopping Cart</h1>
+    <div className="p-4 pt-6 h-full flex flex-col max-w-lg mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-neutral-800/50">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-1">Корзина</h1>
+          <p className="text-sm text-neutral-400">{totalItems} {totalItems === 1 ? 'товар' : totalItems < 5 ? 'товара' : 'товаров'} в корзине</p>
+        </div>
+        <div className="w-12 h-12 bg-neutral-900 rounded-2xl flex items-center justify-center border border-neutral-800">
+          <ShoppingBag className="text-red-500" size={24} />
+        </div>
+      </div>
       
-      <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar pb-4">
-        {cart.map((item) => (
-          <div key={item.id} className="bg-neutral-900 p-4 rounded-xl flex items-center space-x-4 border border-neutral-800">
-            {item.image ? (
-              <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover bg-neutral-800" />
-            ) : (
-              <div className="w-16 h-16 rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-600 text-xs">
-                No Img
+      {/* Cart Items */}
+      <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-4">
+        {cart.map((item, index) => (
+          <div 
+            key={item.id} 
+            className="group bg-neutral-900/50 backdrop-blur-sm p-4 rounded-2xl flex items-center gap-4 border border-neutral-800 hover:border-neutral-700 transition-all duration-300 hover:shadow-lg hover:shadow-black/20"
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
+            {/* Image */}
+            <div className="relative">
+              {item.image ? (
+                <img 
+                  src={item.image} 
+                  alt={item.name} 
+                  className="w-20 h-20 rounded-xl object-cover bg-neutral-800 group-hover:scale-105 transition-transform duration-300" 
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-xl bg-neutral-800 flex items-center justify-center text-neutral-600 text-xs border border-neutral-700/50">
+                  <Package size={20} />
+                </div>
+              )}
+              <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-lg">
+                {item.quantity}
               </div>
-            )}
-            <div className="flex-1">
-              <h3 className="text-sm font-bold text-white">{item.name}</h3>
-              <p className="text-xs text-neutral-400 mt-1">Qty: {item.quantity}</p>
-              <div className="text-white font-bold mt-1">{item.price} BYN</div>
             </div>
-            <button
-              onClick={() => removeFromCart(item.id)}
-              className="p-2 text-neutral-500 hover:text-red-500 transition-colors"
-            >
-              <Trash2 size={20} />
-            </button>
+            
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-white line-clamp-1 mb-1 group-hover:text-red-500 transition-colors">
+                {item.name}
+              </h3>
+              <p className="text-xs text-neutral-500 mb-2">{item.price} BYN за шт.</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-neutral-400 bg-neutral-800/80 px-2 py-1 rounded-lg border border-neutral-700/50">
+                  Кол-во: {item.quantity} шт.
+                </span>
+              </div>
+            </div>
+            
+            {/* Price & Actions */}
+            <div className="flex flex-col items-end gap-3">
+              <div className="text-white font-bold text-lg">
+                {(item.price * item.quantity).toFixed(2)} BYN
+              </div>
+              <button
+                onClick={() => removeFromCart(item.id)}
+                className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                title="Удалить из корзины"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 bg-neutral-900 p-6 rounded-2xl border border-neutral-800">
-        <div className="flex justify-between items-center mb-6">
-          <span className="text-neutral-400">Total Amount</span>
-          <span className="text-2xl font-bold text-white">{total} BYN</span>
+      {/* Checkout Section */}
+      <div className="mt-4 bg-gradient-to-br from-neutral-900 to-neutral-900/50 p-6 rounded-3xl border border-neutral-800 shadow-2xl shadow-black/20">
+        {/* Total Calculation */}
+        <div className="space-y-3 mb-6 pb-6 border-b border-neutral-800/50">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-neutral-400">Товары ({totalItems})</span>
+            <span className="text-neutral-300">{total.toFixed(2)} BYN</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-neutral-400">Доставка</span>
+            <span className="text-emerald-500 font-medium">Бесплатно</span>
+          </div>
+          <div className="flex justify-between items-center pt-2">
+            <span className="text-neutral-300 font-medium">Итого к оплате</span>
+            <span className="text-3xl font-bold text-white">{total.toFixed(2)} BYN</span>
+          </div>
         </div>
+
+        {/* Checkout Button */}
         <button
           onClick={handleCheckout}
-          className="w-full bg-red-600 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 hover:bg-red-700 transition-colors"
+          className="group w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:from-red-500 hover:to-red-600 transition-all duration-300 shadow-lg shadow-red-600/25 hover:shadow-red-500/30 hover:-translate-y-0.5 active:translate-y-0"
         >
-          <span>Confirm Purchase</span>
-          <ArrowRight size={20} />
+          <span className="text-base">Оформить заказ</span>
+          <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </button>
-        <p className="text-[10px] text-center text-neutral-500 mt-3">
-          Items will be reserved immediately.
-        </p>
+
+        {/* Security Note */}
+        <div className="flex items-center justify-center gap-2 mt-4 text-[11px] text-neutral-500">
+          <Shield size={12} />
+          <span>Товары будут зарезервированы сразу после оформления</span>
+        </div>
       </div>
     </div>
   );
