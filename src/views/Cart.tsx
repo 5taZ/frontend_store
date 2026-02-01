@@ -1,10 +1,10 @@
 import React from 'react';
-import { Trash2, ShoppingBag, ArrowRight, Package, Shield, Minus, Plus } from 'lucide-react'; // Добавлены Minus, Plus
+import { Trash2, ShoppingBag, ArrowRight, Package, Shield, Minus, Plus } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { View } from '../types';
 
 const Cart: React.FC = () => {
-  const { cart, removeFromCart, placeOrder, setCurrentView, updateCartItemQuantity } = useStore(); // Добавлен updateCartItemQuantity
+  const { cart, removeFromCart, placeOrder, setCurrentView, updateCartItemQuantity } = useStore();
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -84,24 +84,28 @@ const Cart: React.FC = () => {
               </h3>
               <p className="text-xs text-neutral-500 mb-2">{item.price} BYN за шт.</p>
               
-              {/* ✅ Рабочее управление количеством */}
+              {/* Управление количеством */}
               <div className="flex items-center gap-2 bg-neutral-950 rounded-xl px-2 py-1.5 w-fit border border-neutral-800">
                 <button 
                   onClick={() => {
+                    // ✅ Изменено: при quantity = 1 ничего не делаем (не удаляем)
+                    // Удаление только через кнопку мусорки
                     if (item.quantity > 1) {
                       updateCartItemQuantity(item.id, item.quantity - 1);
-                    } else {
-                      removeFromCart(item.id);
                     }
                   }}
-                  className="p-1 hover:bg-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-colors active:scale-95"
+                  className={`p-1 rounded-lg transition-all active:scale-95 ${
+                    item.quantity <= 1 
+                      ? 'text-neutral-600 cursor-default' // Визуально неактивна, но нажимается
+                      : 'hover:bg-neutral-800 text-neutral-400 hover:text-white'
+                  }`}
                 >
                   <Minus size={14} strokeWidth={3} />
                 </button>
                 <span className="text-sm font-bold text-white w-6 text-center">{item.quantity}</span>
                 <button 
                   onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                  className="p-1 hover:bg-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-colors active:scale-95"
+                  className="p-1 hover:bg-neutral-800 rounded-lg text-neutral-400 hover:text-white transition-all active:scale-95"
                 >
                   <Plus size={14} strokeWidth={3} />
                 </button>
@@ -114,7 +118,7 @@ const Cart: React.FC = () => {
               </div>
               <button
                 onClick={() => removeFromCart(item.id)}
-                className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all active:scale-95"
                 title="Удалить из корзины"
               >
                 <Trash2 size={18} />
