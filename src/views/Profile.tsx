@@ -10,7 +10,7 @@ import {
   ArrowRight,
   Shield,
   Plus,
-  Search
+  ChevronRight
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus, View } from '../types';
@@ -154,13 +154,18 @@ const Profile: React.FC = () => {
           </div>
         </div>
 
-        {/* Кнопка запроса товара */}
+        {/* ✅ Улучшенная кнопка запроса товара - без лупы, стрелка справа */}
         <button
           onClick={() => setIsRequestFormOpen(true)}
-          className="w-full mt-4 flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white py-3 rounded-xl transition-all active:scale-95"
+          className="w-full mt-4 flex items-center justify-between p-4 bg-gradient-to-r from-neutral-800 to-neutral-800/50 hover:from-neutral-700 hover:to-neutral-700/50 border border-neutral-700 rounded-2xl transition-all active:scale-[0.98] group"
         >
-          <Search size={18} className="text-red-500" />
-          <span className="text-sm font-medium">Нет нужного товара? Запросите добавление</span>
+          <div className="flex flex-col items-start">
+            <span className="text-white font-bold">Нет нужного товара?</span>
+            <span className="text-sm text-neutral-400">Запросите добавление в каталог</span>
+          </div>
+          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform">
+            <Plus size={20} className="text-white" />
+          </div>
         </button>
       </div>
 
@@ -173,18 +178,18 @@ const Profile: React.FC = () => {
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-600/20 rounded-xl flex items-center justify-center">
-                <Plus size={20} className="text-red-500" />
+                <Package size={20} className="text-red-500" />
               </div>
               <div className="text-left">
                 <h3 className="font-bold text-white">Мои запросы</h3>
-                <p className="text-xs text-neutral-400">{userRequests.length} {userRequests.length === 1 ? 'запрос' : 'запроса'}</p>
+                <p className="text-xs text-neutral-400">{userRequests.length} {userRequests.length === 1 ? 'запрос' : userRequests.length < 5 ? 'запроса' : 'запросов'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {userRequests.some(r => r.status === 'pending') && (
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
               )}
-              <ArrowRight size={18} className={`text-neutral-500 transition-transform ${showRequests ? 'rotate-90' : ''}`} />
+              <ChevronRight size={20} className={`text-neutral-500 transition-transform ${showRequests ? 'rotate-90' : ''}`} />
             </div>
           </button>
 
