@@ -81,7 +81,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const refreshProducts = useCallback(async () => {
     try {
-      const data: any[] = await api.getProducts();
+      const  any[] = await api.getProducts();
       setProducts(data.map((p: any) => ({
         id: p.id.toString(),
         name: p.name,
@@ -114,7 +114,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         requestsData = await api.getUserProductRequests(user.id);
       }
       
-      const newRequests = requestsData.map((r: any) => ({
+      setProductRequests(requestsData.map((r: any) => ({
         id: r.id.toString(),
         userId: r.userId,
         username: r.username,
@@ -124,41 +124,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         status: r.status,
         createdAt: r.createdAt,
         processedAt: r.processedAt
-      }));
-      
-      // 🔔 Проверка новых статусов для уведомлений
-      const previousIds = new Set(productRequests.map(r => r.id));
-      const newOrUpdated = newRequests.filter(r => {
-        const old = productRequests.find(pr => pr.id === r.id);
-        return !previousIds.has(r.id) || (old && old.status !== r.status);
-      });
-      
-      // Показываем уведомление если статус изменился
-      if (newOrUpdated.length > 0 && typeof window !== 'undefined') {
-        const tg = (window as any).Telegram?.WebApp;
-        if (tg?.showPopup) {
-          const latest = newOrUpdated[newOrUpdated.length - 1];
-          if (latest.status === 'approved') {
-            tg.showPopup({
-              title: '✅ Запрос одобрен!',
-              message: `Товар "${latest.productName}" добавлен в каталог. Вы можете заказать его прямо сейчас!`,
-              buttons: [{ type: 'default', text: 'Перейти в каталог' }]
-            });
-          } else if (latest.status === 'rejected') {
-            tg.showPopup({
-              title: '❌ Запрос отклонен',
-              message: `К сожалению, запрос на "${latest.productName}" не может быть выполнен.`,
-              buttons: [{ type: 'default', text: 'Понятно' }]
-            });
-          }
-        }
-      }
-      
-      setProductRequests(newRequests);
+      })));
     } catch (error) {
       console.error('Failed to load product requests:', error);
     }
-  }, [user, isAdmin, productRequests]);
+  }, [user, isAdmin]);
 
   useEffect(() => {
     if (!user) return;
