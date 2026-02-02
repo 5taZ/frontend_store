@@ -114,7 +114,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         requestsData = await api.getUserProductRequests(user.id);
       }
       
-      setProductRequests(requestsData.map((r: any) => ({
+      const newRequests = requestsData.map((r: any) => ({
         id: r.id.toString(),
         userId: r.userId,
         username: r.username,
@@ -124,30 +124,82 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         status: r.status,
         createdAt: r.createdAt,
         processedAt: r.processedAt
-      })));
+      }));
+      
+      // 🔔 Проверка новых статусов для уведомлений
+      const previousIds = new Set(productRequests.map(r => r.id));
+      const newOrUpdated = newRequests.filter(r => {
+        const old = productRequests.find(pr => pr.id === r.id);
+        return !previousIds.has(r.id) || (old && old.status !== r.status);
+      });
+      
+      // Показываем уведомление если статус изменился
+      if (newOrUpdated.length > 0 && typeof window !== 'undefined') {
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg?.showPopup) {
+          const latest = newOrUpdated[newOrUpdated.length - 1];
+          if (latest.status === 'approved') {
+            tg.showPopup({
+              title: '✅ Запрос одобрен!',
+              message: `Товар "${latest.productName}" добавлен в каталог. Вы можете заказать его прямо сейчас!`,
+              buttons: [{ type: 'default', text: 'Перейти в каталог' }]
+            });
+          } else if (latest.status === 'rejected') {
+            tg.showPopup({
+              title: '❌ Запрос отклонен',
+              message: `К сожалению, запрос на "${latest.productName}" не может быть выполнен.`,
+              buttons: [{ type: 'default', text: 'Понятно' }]
+            });
+          }
+        }
+      }
+      
+      setProductRequests(newRequests);
     } catch (error) {
       console.error('Failed to load product requests:', error);
     }
-  }, [user, isAdmin]);
+  }, [user, isAdmin, productRequests]);
 
   useEffect(() => {
     if (!user) return;
     
-    // Увеличиваем интервал до 15 секунд для снижения нагрузки
-    const interval = setInterval(() => {
-      refreshOrders();
-    }, 15000);
+    // 🔥 УМНЫЕ ИНТЕРВАЛЫ ОБНОВЛЕНИЯ
+    const intervals: NodeJS.Timeout[] = [];
+    
+    // Заказы: 5 сек для ожидающих, 30 сек для остальных
+    const ordersInterval = setInterval(async () => {
+      if (!user) return;
+      
+      // Обновляем чаще только если есть ожидающие заказы
+      const hasPending = orders.some(o => o.status === OrderStatus.PENDING);
+      if (hasPending || isAdmin) {
+        await refreshOrders();
+      }
+    }, 5000);
+    intervals.push(ordersInterval);
 
-    // Отдельный интервал для продуктов - каждые 30 секунд
+    // Продукты: 30 сек (редко меняются)
     const productsInterval = setInterval(() => {
       refreshProducts();
     }, 30000);
+    intervals.push(productsInterval);
+
+    // 🔥 КРИТИЧЕСКИ ВАЖНО: Запросы на товары с умным интервалом
+    const requestsInterval = setInterval(async () => {
+      if (!user) return;
+      
+      // Обновляем чаще только если есть ожидающие запросы
+      const hasPendingRequests = productRequests.some(r => r.status === 'pending');
+      if (hasPendingRequests || isAdmin) {
+        await refreshProductRequests();
+      }
+    }, 7000); // 7 секунд — оптимальный баланс
+    intervals.push(requestsInterval);
 
     return () => {
-      clearInterval(interval);
-      clearInterval(productsInterval);
+      intervals.forEach(clearInterval);
     };
-  }, [user, isAdmin, refreshOrders, refreshProducts]);
+  }, [user, isAdmin, orders, productRequests, refreshOrders, refreshProducts, refreshProductRequests]);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -185,7 +237,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
               await Promise.all([
                 refreshProducts(),
-                loadOrders(dbUser.id, userIsAdmin)
+                loadOrders(dbUser.id, userIsAdmin),
+                refreshProductRequests()
               ]);
 
             } catch (error) {
@@ -207,6 +260,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           });
           setIsAdmin(true);
           await refreshProducts();
+          await refreshProductRequests();
         }
       } catch (error) {
         console.error('Init error:', error);
