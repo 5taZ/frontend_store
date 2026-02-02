@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
-import { Package, Upload, X, Check, Loader2 } from 'lucide-react';
+import { Package, Upload, X, Check, Loader2, Search } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
 interface ProductRequestFormProps {
-  productName?: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '', isOpen, onClose }) => {
+const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ isOpen, onClose }) => {
   const { requestProduct } = useStore();
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    productName: productName,
+    productName: '',
     quantity: '1',
     image: ''
   });
 
-  // Загрузка фото в Cloudinary
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -75,7 +73,7 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
         formData.image || undefined
       );
       
-      setFormData({ productName: productName, quantity: '1', image: '' });
+      setFormData({ productName: '', quantity: '1', image: '' });
       onClose();
     } catch (error) {
       alert('Ошибка отправки запроса');
@@ -88,9 +86,8 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-neutral-900 rounded-3xl w-full max-w-md relative border border-neutral-800 shadow-2xl">
-        {/* Header */}
-        <div className="relative pt-6 pb-4 px-6 border-b border-neutral-800">
+      <div className="bg-neutral-900 rounded-3xl w-full max-w-md relative border border-neutral-800 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-neutral-900 pt-6 pb-4 px-6 border-b border-neutral-800 z-10">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded-full transition-all"
@@ -100,13 +97,13 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ productName = '
 
           <div className="text-center">
             <div className="w-12 h-12 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Package className="text-red-500" size={24} />
+              <Search className="text-red-500" size={24} />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              Не нашли нужный товар?
+              Запросить товар
             </h2>
             <p className="text-sm text-neutral-400">
-              Отправьте запрос, и мы добавим товар в каталог или свяжемся с вами
+              Опишите товар, которого нет в каталоге. Мы добавим его и сообщим вам.
             </p>
           </div>
         </div>
