@@ -58,7 +58,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const loadOrders = useCallback(async (userId: number, adminStatus: boolean) => {
     try {
-      let ordersData;
+      let ordersData: any[];
       if (adminStatus) {
         ordersData = await api.getAllOrders();
       } else {
@@ -81,7 +81,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const refreshProducts = useCallback(async () => {
     try {
-      const data = await api.getProducts();
+      const data: any[] = await api.getProducts();
       setProducts(data.map((p: any) => ({
         id: p.id.toString(),
         name: p.name,
@@ -102,6 +102,33 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       await loadOrders(user.id, isAdmin);
     }
   }, [user, isAdmin, loadOrders]);
+
+  const refreshProductRequests = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      let requestsData: any[];
+      if (isAdmin) {
+        requestsData = await api.getProductRequests();
+      } else {
+        requestsData = await api.getUserProductRequests(user.id);
+      }
+      
+      setProductRequests(requestsData.map((r: any) => ({
+        id: r.id.toString(),
+        userId: r.userId,
+        username: r.username,
+        productName: r.productName,
+        quantity: r.quantity,
+        image: r.image,
+        status: r.status,
+        createdAt: r.createdAt,
+        processedAt: r.processedAt
+      })));
+    } catch (error) {
+      console.error('Failed to load product requests:', error);
+    }
+  }, [user, isAdmin]);
 
   useEffect(() => {
     if (!user) return;
@@ -189,7 +216,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     initializeApp();
-  }, [loadOrders, refreshProducts]);
+  }, [loadOrders, refreshProducts, refreshProductRequests]);
 
   const addToCart = useCallback((product: Product) => {
     setCart((prev) => {
@@ -246,7 +273,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setProducts(prev => [optimisticProduct, ...prev]);
     
     try {
-      const dbProduct = await api.addProduct(product);
+      const dbProduct: any = await api.addProduct(product);
       setProducts(prev => prev.map(p => p.id === tempId ? {
         id: dbProduct.id.toString(),
         name: dbProduct.name,
@@ -355,7 +382,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         total_amount: total 
       });
       
-      const dbOrder = await api.createOrder(user.id, cartItemsWithNumberId, total);
+      const dbOrder: any = await api.createOrder(user.id, cartItemsWithNumberId, total);
       
       console.log('✅ Server response:', dbOrder);
       
@@ -534,34 +561,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error: any) {
       alert(`Не удалось обработать запрос: ${error.message || 'Неизвестная ошибка'}`);
     }
-  }, [isAdmin]);
-
-  const refreshProductRequests = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      let requestsData;
-      if (isAdmin) {
-        requestsData = await api.getProductRequests();
-      } else {
-        requestsData = await api.getUserProductRequests(user.id);
-      }
-      
-      setProductRequests(requestsData.map((r: any) => ({
-        id: r.id.toString(),
-        userId: r.userId,
-        username: r.username,
-        productName: r.productName,
-        quantity: r.quantity,
-        image: r.image,
-        status: r.status,
-        createdAt: r.createdAt,
-        processedAt: r.processedAt
-      })));
-    } catch (error) {
-      console.error('Failed to load product requests:', error);
-    }
-  }, [user, isAdmin]);
+  }, [isAdmin, refreshProductRequests]);
 
   return (
     <StoreContext.Provider
