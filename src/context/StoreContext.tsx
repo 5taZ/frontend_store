@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { Product, CartItem, User, Order, OrderStatus, ProductRequest, View } from '../types';
 import { api } from '../api';
 
@@ -40,6 +40,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>(View.ITEMS);
+
+  // Ref для отслеживания активных запросов
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
+
+  // Очистка всех запросов при размонтировании
+  useEffect(() => {
+    return () => {
+      abortControllersRef.current.forEach(controller => {
+        if (!controller.signal.aborted) {
+          controller.abort();
+        }
+      });
+      abortControllersRef.current.clear();
+    };
+  }, []);
 
   const loadOrders = useCallback(async (userId: number, adminStatus: boolean) => {
     try {
@@ -91,12 +106,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     if (!user) return;
     
+    // Увеличиваем интервал до 15 секунд для снижения нагрузки
     const interval = setInterval(() => {
       refreshOrders();
-      refreshProducts();
-    }, 5000);
+    }, 15000);
 
-    return () => clearInterval(interval);
+    // Отдельный интервал для продуктов - каждые 30 секунд
+    const productsInterval = setInterval(() => {
+      refreshProducts();
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(productsInterval);
+    };
   }, [user, isAdmin, refreshOrders, refreshProducts]);
 
   useEffect(() => {
@@ -445,6 +468,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return;
     }
     
+    // Отменяем предыдущий запрос если есть
+    const requestKey = `product-request:${user.id}:${Date.now()}`;
+    if (abortControllersRef.current.has(requestKey)) {
+      abortControllersRef.current.get(requestKey)!.abort();
+    }
+    
+    const controller = new AbortController();
+    abortControllersRef.current.set(requestKey, controller);
+    
     try {
       console.log('📤 Sending product request:', { 
         userId: user.id, 
@@ -453,7 +485,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         image
       });
       
-      const result = await api.requestProduct(user.id, productName, quantity, image);
+      // Используем оптимизированный метод с поддержкой отмены
+      const result = await api.requestProduct(
+        user.id, 
+        productName, 
+        quantity, 
+        image,
+        controller.signal
+      );
       
       console.log('✅ Product request successful:', result);
       
@@ -469,13 +508,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       console.log('✅ Product request flow completed');
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted');
+        return;
+      }
+      
       console.error('❌ Product request error:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
       
       alert(`Не удалось запросить товар: ${error.message || 'Неизвестная ошибка'}`);
+    } finally {
+      abortControllersRef.current.delete(requestKey);
     }
-  }, [user]);
+  }, [user, refreshProductRequests]);
 
   const processProductRequest = useCallback(async (requestId: string, approved: boolean) => {
     if (!isAdmin) return;
