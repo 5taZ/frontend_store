@@ -84,19 +84,16 @@ const Cart: React.FC = () => {
               </h3>
               <p className="text-xs text-neutral-500 mb-2">{item.price} BYN за шт.</p>
               
-              {/* Управление количеством */}
               <div className="flex items-center gap-2 bg-neutral-950 rounded-xl px-2 py-1.5 w-fit border border-neutral-800">
                 <button 
                   onClick={() => {
-                    // ✅ Изменено: при quantity = 1 ничего не делаем (не удаляем)
-                    // Удаление только через кнопку мусорки
                     if (item.quantity > 1) {
                       updateCartItemQuantity(item.id, item.quantity - 1);
                     }
                   }}
                   className={`p-1 rounded-lg transition-all active:scale-95 ${
                     item.quantity <= 1 
-                      ? 'text-neutral-600 cursor-default' // Визуально неактивна, но нажимается
+                      ? 'text-neutral-600 cursor-default'
                       : 'hover:bg-neutral-800 text-neutral-400 hover:text-white'
                   }`}
                 >
@@ -128,19 +125,27 @@ const Cart: React.FC = () => {
         ))}
       </div>
 
+      {/* Исправленный блок итого с фиксированным выравниванием */}
       <div className="mt-4 bg-gradient-to-br from-neutral-900 to-neutral-900/50 p-6 rounded-3xl border border-neutral-800 shadow-2xl shadow-black/20">
         <div className="space-y-3 mb-6 pb-6 border-b border-neutral-800/50">
-          <div className="flex justify-between items-center text-sm">
+          {/* Товары */}
+          <div className="grid grid-cols-[1fr_auto] gap-4 items-center text-sm">
             <span className="text-neutral-400">Товары ({totalItems})</span>
-            <span className="text-neutral-300">{total.toFixed(2)} BYN</span>
+            <span className="text-neutral-300 text-right min-w-[80px]">{total.toFixed(2)} BYN</span>
           </div>
-          <div className="flex justify-between items-center text-sm">
+          
+          {/* Доставка */}
+          <div className="grid grid-cols-[1fr_auto] gap-4 items-center text-sm">
             <span className="text-neutral-400">Доставка</span>
-            <span className="text-emerald-500 font-medium">Бесплатно</span>
+            <span className="text-emerald-500 font-medium text-right min-w-[80px]">Бесплатно</span>
           </div>
-          <div className="flex justify-between items-center pt-2">
+          
+          {/* Итого - с фиксированной шириной для числа */}
+          <div className="grid grid-cols-[1fr_auto] gap-4 items-baseline pt-2">
             <span className="text-neutral-300 font-medium">Итого к оплате</span>
-            <span className="text-3xl font-bold text-white">{total.toFixed(2)} BYN</span>
+            <div className="text-right min-w-[140px]">
+              <span className="text-3xl font-bold text-white whitespace-nowrap">{total.toFixed(2)} BYN</span>
+            </div>
           </div>
         </div>
 
