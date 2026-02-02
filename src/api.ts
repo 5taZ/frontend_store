@@ -115,22 +115,25 @@ export const api = {
   },
 
   async getOrCreateUser(telegramId: number, username: string) {
-    return this.request('/users', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        telegram_id: telegramId, 
-        username,
-        init_data: getInitData()
-      })
-    });
+    return this.request<{ id: number; username: string; is_admin: boolean }>(
+      '/users',
+      {
+        method: 'POST',
+        body: JSON.stringify({ 
+          telegram_id: telegramId, 
+          username,
+          init_data: getInitData()
+        })
+      }
+    );
   },
 
   async getProducts() {
-    return this.request('/products', {}, true, 'products:list');
+    return this.request<any[]>('/products', {}, true, 'products:list');
   },
 
   async addProduct(product: any) {
-    const result = await this.request('/products', {
+    const result = await this.request<any>('/products', {
       method: 'POST',
       body: JSON.stringify({
         ...product,
@@ -143,7 +146,7 @@ export const api = {
   },
 
   async deleteProduct(productId: string) {
-    const result = await this.request(`/products/${productId}`, {
+    const result = await this.request<any>(`/products/${productId}`, {
       method: 'DELETE',
       body: JSON.stringify({ init_data: getInitData() })
     });
@@ -156,7 +159,7 @@ export const api = {
       product = { ...product, quantity: Number(product.quantity) };
     }
     
-    const result = await this.request(`/products/${productId}`, {
+    const result = await this.request<any>(`/products/${productId}`, {
       method: 'PATCH',
       body: JSON.stringify({
         ...product,
@@ -168,19 +171,19 @@ export const api = {
   },
 
   async getAllOrders() {
-    return this.request('/orders', {
+    return this.request<any[]>('/orders', {
       headers: { 'X-Telegram-Init-Data': getInitData() }
     });
   },
 
   async getUserOrders(userId: number) {
-    return this.request(`/orders/user/${userId}`, {
+    return this.request<any[]>(`/orders/user/${userId}`, {
       headers: { 'X-Telegram-Init-Data': getInitData() }
     }, true, `orders:user:${userId}`);
   },
 
   async createOrder(userId: number, items: any[], totalAmount: number) {
-    return this.request('/orders', {
+    return this.request<any>('/orders', {
       method: 'POST',
       body: JSON.stringify({ 
         user_id: userId, 
@@ -192,7 +195,7 @@ export const api = {
   },
 
   async updateOrderStatus(orderId: string, status: string, initData?: string, userId?: number) {
-    return this.request(`/orders/${orderId}`, {
+    return this.request<any>(`/orders/${orderId}`, {
       method: 'PATCH',
       body: JSON.stringify({ 
         status,
@@ -209,7 +212,7 @@ export const api = {
     quantity: number, 
     image?: string,
     signal?: AbortSignal
-  ) {
+  ): Promise<any> {
     const controller = signal ? undefined : new AbortController();
     const abortSignal = signal || controller?.signal;
     
@@ -242,19 +245,19 @@ export const api = {
   },
 
   async getProductRequests() {
-    return this.request('/product-requests', {
+    return this.request<any[]>('/product-requests', {
       headers: { 'X-Telegram-Init-Data': getInitData() }
     });
   },
 
   async getUserProductRequests(userId: number) {
-    return this.request(`/product-requests/user/${userId}`, {
+    return this.request<any[]>(`/product-requests/user/${userId}`, {
       headers: { 'X-Telegram-Init-Data': getInitData() }
     }, true, `product-requests:user:${userId}`);
   },
 
   async processProductRequest(requestId: string, status: 'approved' | 'rejected') {
-    return this.request(`/product-requests/${requestId}`, {
+    return this.request<any>(`/product-requests/${requestId}`, {
       method: 'PATCH',
       body: JSON.stringify({ 
         status,
