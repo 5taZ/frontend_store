@@ -15,7 +15,7 @@ export const api = {
       body: JSON.stringify({ 
         telegram_id: telegramId, 
         username,
-        init_data: getInitData()  // ← исправлено: добавлено двоеточие
+        init_data: getInitData()
       })
     });
     
@@ -38,7 +38,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData()  // ← исправлено
+        init_data: getInitData()
       })
     });
     if (!response.ok) throw new Error('Failed to add product');
@@ -49,17 +49,14 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init_data: getInitData() })  // ← исправлено
+      body: JSON.stringify({ init_data: getInitData() })
     });
     if (!response.ok) throw new Error('Failed to delete product');
     return response.json();
   },
 
   async updateProduct(productId: string, product: Partial<any>) {
-    console.log('📡 API updateProduct called:', { productId, product });
-    
     if (product.quantity !== undefined && typeof product.quantity !== 'number') {
-      console.warn('⚠️ API: Quantity is not a number, converting:', product.quantity);
       product = { ...product, quantity: Number(product.quantity) };
     }
     
@@ -68,21 +65,16 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...product,
-        init_data: getInitData()  // ← исправлено
+        init_data: getInitData()
       })
     });
     
-    console.log('📡 API response status:', response.status);
-    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ API error response:', errorText);
       throw new Error(errorText || 'Failed to update product');
     }
     
-    const data = await response.json();
-    console.log('✅ API response ', data);
-    return data;
+    return response.json();
   },
 
   async getAllOrders() {
@@ -102,8 +94,6 @@ export const api = {
   },
 
   async createOrder(userId: number, items: any[], totalAmount: number) {
-    console.log('📡 API createOrder called:', { userId, itemsCount: items.length, totalAmount });
-    
     const response = await fetch(`${API_BASE_URL}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,21 +101,16 @@ export const api = {
         user_id: userId, 
         items, 
         total_amount: totalAmount,
-        init_data: getInitData()  // ← исправлено
+        init_data: getInitData()
       })
     });
     
-    console.log('📡 API response status:', response.status);
-    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ API error response:', errorText);
       throw new Error(errorText || 'Failed to create order');
     }
     
-    const data = await response.json();
-    console.log('✅ API response ', data);
-    return data;
+    return response.json();
   },
 
   async updateOrderStatus(orderId: string, status: string, initData?: string, userId?: number) {
@@ -134,7 +119,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: initData || getInitData(),  // ← исправлено: было init_ initData
+        init_data: initData || getInitData(),
         user_id: userId
       })
     });
@@ -145,12 +130,8 @@ export const api = {
     return response.json();
   },
 
+  // ✅ ОПТИМИЗИРОВАНО: Убраны лишние логи, минимальный запрос
   async requestProduct(userId: number, productName: string, quantity: number, image?: string) {
-    console.log('📡 API requestProduct called:', { userId, productName, quantity, image });
-    
-    const initData = getInitData();
-    console.log('📡 Telegram init ', initData ? 'Present' : 'Missing');
-    
     const response = await fetch(`${API_BASE_URL}/product-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -159,21 +140,16 @@ export const api = {
         product_name: productName,
         quantity,
         image,
-        init_data: initData  // ← исправлено: было init_ initData
+        init_data: getInitData()
       })
     });
     
-    console.log('📡 API response status:', response.status);
-    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ API error response:', errorText);
       throw new Error(errorText || 'Failed to request product');
     }
     
-    const data = await response.json();
-    console.log('✅ API response ', data);
-    return data;
+    return response.json();
   },
 
   async getProductRequests() {
@@ -198,7 +174,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         status,
-        init_data: getInitData()  // ← исправлено
+        init_data: getInitData()
       })
     });
     if (!response.ok) {
