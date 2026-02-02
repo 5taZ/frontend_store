@@ -20,8 +20,8 @@ const Items: React.FC = () => {
   return (
     <div className="p-4 space-y-6 pb-24 max-w-lg mx-auto">
       <div className="space-y-4">
+        {/* ✅ Убран заголовок NextGear, оставлен только подзаголовок */}
         <div>
-          <h2 className="text-3xl font-bold text-white mb-1">NextGear</h2>
           <p className="text-sm text-neutral-400">Найдите лучшее оборудование для ваших задач</p>
         </div>
 
@@ -49,7 +49,6 @@ const Items: React.FC = () => {
       </div>
 
       {isEmptyCatalog ? (
-        // ✅ Пустой каталог - центрированная кнопка + улучшенный текст
         <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-neutral-900/50 rounded-3xl border border-neutral-800/50">
           <div className="relative mb-6">
             <div className="absolute inset-0 bg-red-600/20 blur-3xl rounded-full" />
@@ -63,7 +62,6 @@ const Items: React.FC = () => {
             Не нашли нужное? Закажите товар в профиле — добавим в ассортимент!
           </p>
           
-          {/* ✅ Центрированная кнопка */}
           <button 
             onClick={() => setCurrentView(View.PROFILE)}
             className="group inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30 active:scale-95"
@@ -73,7 +71,6 @@ const Items: React.FC = () => {
           </button>
         </div>
       ) : isEmptySearch ? (
-        // ✅ Поиск не дал результатов - центрированная кнопка + улучшенный текст
         <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-neutral-900/50 rounded-3xl border border-neutral-800/50">
           <div className="w-20 h-20 bg-neutral-800/80 rounded-full flex items-center justify-center mb-4">
             <Package size={40} className="text-neutral-500" />
@@ -84,12 +81,10 @@ const Items: React.FC = () => {
             Попробуйте изменить запрос поиска
           </p>
           
-          {/* ✅ Улучшенный клиентоориентированный текст */}
           <p className="text-sm text-neutral-500 mb-6 max-w-xs mx-auto leading-relaxed">
             Не нашли нужное? <span className="text-red-500 font-medium">Закажите товар в профиле — мы добавим его специально для вас!</span>
           </p>
           
-          {/* ✅ Центрированная кнопка */}
           <button 
             onClick={() => setCurrentView(View.PROFILE)}
             className="group inline-flex items-center justify-center gap-2 bg-neutral-800 hover:bg-red-600 text-white px-6 py-3 rounded-xl border border-neutral-700 hover:border-red-600 transition-all font-medium"
