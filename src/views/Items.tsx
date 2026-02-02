@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Search, Package } from 'lucide-react';
+import { Search, Package, ArrowRight } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { View } from '../types';
 import ProductCard from '../components/ProductCard';
 
 const Items: React.FC = () => {
-  const { products, addToCart, cart } = useStore();
+  const { products, addToCart, cart, setCurrentView } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredProducts = products.filter(p => 
@@ -12,6 +13,10 @@ const Items: React.FC = () => {
     p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // ✅ Проверяем: пустой каталог вообще или просто поиск не дал результатов
+  const isEmptyCatalog = products.length === 0;
+  const isEmptySearch = products.length > 0 && filteredProducts.length === 0 && searchQuery.trim() !== '';
 
   return (
     <div className="p-4 space-y-6">
@@ -44,7 +49,31 @@ const Items: React.FC = () => {
         </div>
       </div>
 
-      {filteredProducts.length === 0 ? (
+      {isEmptyCatalog ? (
+        // ✅ Пустой каталог - предлагаем запросить товар
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-neutral-900/50 rounded-3xl border border-neutral-800/50 space-y-4">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-red-600/20 blur-3xl rounded-full" />
+            <div className="relative w-24 h-24 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800">
+              <Package size={48} className="text-neutral-500" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-white mb-3">В данный момент товаров нет</h3>
+            <p className="text-neutral-400 max-w-xs mx-auto mb-6">
+              Заказать нужный товар можно в профиле
+            </p>
+            <button 
+              onClick={() => setCurrentView(View.PROFILE)}
+              className="group flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-red-600/20 hover:shadow-red-500/30 active:scale-95"
+            >
+              <span>Перейти в профиль</span>
+              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        </div>
+      ) : isEmptySearch ? (
+        // ✅ Поиск не дал результатов - предлагаем изменить запрос или пойти в профиль
         <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-neutral-900/50 rounded-3xl border border-neutral-800/50 space-y-4">
           <div className="w-20 h-20 bg-neutral-800/80 rounded-full flex items-center justify-center mb-2">
             <Package size={40} className="text-neutral-500" />
@@ -54,9 +83,16 @@ const Items: React.FC = () => {
             <p className="text-neutral-400 mb-2 max-w-xs mx-auto">
               Попробуйте изменить запрос поиска
             </p>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-neutral-500 mb-6">
               Нужного товара нет? Запросите добавление во вкладке <span className="text-red-500 font-bold">Profile</span>
             </p>
+            <button 
+              onClick={() => setCurrentView(View.PROFILE)}
+              className="group flex items-center gap-2 bg-neutral-800 hover:bg-red-600 text-white px-6 py-3 rounded-xl border border-neutral-700 hover:border-red-600 transition-all font-medium"
+            >
+              <span>Перейти в Profile</span>
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
         </div>
       ) : (
