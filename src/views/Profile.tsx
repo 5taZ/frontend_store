@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Clock, 
   CheckCircle2, 
@@ -8,19 +8,28 @@ import {
   ShoppingBag, 
   Calendar,
   ArrowRight,
-  Shield
+  Shield,
+  Plus,
+  Search
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus, View } from '../types';
+import ProductRequestForm from '../components/ProductRequestForm';
 
 const Profile: React.FC = () => {
-  const { user, orders, cancelOrder, setCurrentView } = useStore();
+  const { user, orders, productRequests, cancelOrder, setCurrentView, refreshProductRequests } = useStore();
+  const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
 
   if (!user) return null;
 
   const userOrders = orders
     .filter(order => order.userId === user.id)
     .sort((a, b) => b.date - a.date);
+
+  const userRequests = productRequests
+    .filter(req => req.userId === user.id)
+    .sort((a, b) => b.createdAt - a.createdAt);
 
   const getStatusConfig = (status: OrderStatus) => {
     switch (status) {
@@ -38,12 +47,35 @@ const Profile: React.FC = () => {
           label: 'Отменен',
           bgClass: 'bg-red-950/20'
         };
-      default: // PENDING
+      default: 
         return {
           icon: <Clock size={18} />,
           badgeClass: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
           label: 'В обработке',
           bgClass: 'bg-amber-950/20'
+        };
+    }
+  };
+
+  const getRequestStatusConfig = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return {
+          icon: <CheckCircle2 size={14} />,
+          badgeClass: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+          label: 'Добавлен в каталог'
+        };
+      case 'rejected':
+        return {
+          icon: <XCircle size={14} />,
+          badgeClass: 'bg-red-500/10 border-red-500/20 text-red-400',
+          label: 'Отклонено'
+        };
+      default:
+        return {
+          icon: <Clock size={14} />,
+          badgeClass: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+          label: 'Рассматривается'
         };
     }
   };
@@ -55,7 +87,6 @@ const Profile: React.FC = () => {
         <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/10 rounded-full blur-3xl -mr-16 -mt-16" />
         
         <div className="relative flex items-center gap-4">
-          {/* Аватарка с поддержкой фото из Telegram */}
           <div className="relative">
             {user.photoUrl ? (
               <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-red-600/30 shadow-lg shadow-red-600/20">
@@ -122,7 +153,69 @@ const Profile: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Кнопка запроса товара */}
+        <button
+          onClick={() => setIsRequestFormOpen(true)}
+          className="w-full mt-4 flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white py-3 rounded-xl transition-all active:scale-95"
+        >
+          <Search size={18} className="text-red-500" />
+          <span className="text-sm font-medium">Нет нужного товара? Запросите добавление</span>
+        </button>
       </div>
+
+      {/* Секция запросов товаров */}
+      {userRequests.length > 0 && (
+        <div className="space-y-3">
+          <button 
+            onClick={() => setShowRequests(!showRequests)}
+            className="w-full flex items-center justify-between p-4 bg-neutral-900/50 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-600/20 rounded-xl flex items-center justify-center">
+                <Plus size={20} className="text-red-500" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-bold text-white">Мои запросы</h3>
+                <p className="text-xs text-neutral-400">{userRequests.length} {userRequests.length === 1 ? 'запрос' : 'запроса'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {userRequests.some(r => r.status === 'pending') && (
+                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              )}
+              <ArrowRight size={18} className={`text-neutral-500 transition-transform ${showRequests ? 'rotate-90' : ''}`} />
+            </div>
+          </button>
+
+          {showRequests && (
+            <div className="space-y-3 pl-2">
+              {userRequests.map((request) => {
+                const statusConfig = getRequestStatusConfig(request.status);
+                return (
+                  <div key={request.id} className="bg-neutral-900/30 p-4 rounded-xl border border-neutral-800/50 flex items-center gap-3">
+                    {request.image ? (
+                      <img src={request.image} alt="" className="w-12 h-12 rounded-lg object-cover bg-neutral-800" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-neutral-800 flex items-center justify-center">
+                        <Package size={20} className="text-neutral-600" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{request.productName}</p>
+                      <p className="text-xs text-neutral-500">Кол-во: {request.quantity} шт.</p>
+                      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border mt-1 ${statusConfig.badgeClass}`}>
+                        {statusConfig.icon}
+                        {statusConfig.label}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Orders Section */}
       <div className="space-y-4">
@@ -172,10 +265,8 @@ const Profile: React.FC = () => {
                   className={`group bg-neutral-900/50 backdrop-blur-sm rounded-2xl border border-neutral-800 overflow-hidden hover:border-neutral-700 transition-all duration-300 hover:shadow-lg hover:shadow-black/20 ${statusConfig.bgClass}`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  {/* Order Header */}
                   <div className="p-4 border-b border-neutral-800/50 flex items-center justify-between bg-neutral-900/30">
                     <div className="flex items-center gap-3">
-                      {/* Исправлен размер блока номера заказа */}
                       <div className="w-12 h-12 bg-neutral-800 rounded-xl flex items-center justify-center font-mono font-bold text-xs text-neutral-400 border border-neutral-700 shrink-0">
                         #{orderNumber}
                       </div>
@@ -196,7 +287,6 @@ const Profile: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Order Items */}
                   <div className="p-4 space-y-3">
                     {order.items.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-3 group/item">
@@ -228,7 +318,6 @@ const Profile: React.FC = () => {
                     ))}
                   </div>
 
-                  {/* Order Footer */}
                   <div className="p-4 bg-neutral-950/30 border-t border-neutral-800/50 flex items-center justify-between">
                     <div className="flex items-baseline gap-2">
                       <span className="text-xs text-neutral-500">Итого:</span>
@@ -253,6 +342,14 @@ const Profile: React.FC = () => {
           </div>
         )}
       </div>
+
+      <ProductRequestForm 
+        isOpen={isRequestFormOpen}
+        onClose={() => {
+          setIsRequestFormOpen(false);
+          refreshProductRequests();
+        }}
+      />
     </div>
   );
 };
