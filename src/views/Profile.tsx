@@ -154,16 +154,16 @@ const Profile: React.FC = () => {
           </div>
         </div>
 
-        {/* ✅ Улучшенная кнопка запроса товара - без лупы, стрелка справа */}
+        {/* ✅ Исправленная кнопка запроса товара - текст по центру */}
         <button
           onClick={() => setIsRequestFormOpen(true)}
           className="w-full mt-4 flex items-center justify-between p-4 bg-gradient-to-r from-neutral-800 to-neutral-800/50 hover:from-neutral-700 hover:to-neutral-700/50 border border-neutral-700 rounded-2xl transition-all active:scale-[0.98] group"
         >
-          <div className="flex flex-col items-start">
-            <span className="text-white font-bold">Нет нужного товара?</span>
-            <span className="text-sm text-neutral-400">Запросите добавление в каталог</span>
+          <div className="flex-1 flex flex-col items-center text-center">
+            <span className="text-white font-bold text-base">Нет нужного товара?</span>
+            <span className="text-sm text-neutral-400 mt-1">Закажите товар в профиле — добавим в ассортимент!</span>
           </div>
-          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform flex-shrink-0 ml-3">
             <Plus size={20} className="text-white" />
           </div>
         </button>
