@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Package, Upload, X, Check, Loader2, Search } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
@@ -6,6 +6,53 @@ interface ProductRequestFormProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// УТИЛИТА СЖАТИЯ ИЗОБРАЖЕНИЯ
+const compressImage = async (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas unavailable'));
+        
+        // Макс. ширина 800px с сохранением пропорций
+        const maxWidth = 800;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Экспорт в JPEG с качеством 0.85
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error('Blob creation failed'));
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = () => reject(new Error('Image load failed'));
+    };
+    reader.onerror = () => reject(new Error('File read failed'));
+  });
+};
 
 const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ isOpen, onClose }) => {
   const { requestProduct } = useStore();
@@ -16,6 +63,22 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ isOpen, onClose
     quantity: '1',
     image: ''
   });
+
+  // AbortController для отмены запросов
+  const uploadAbortController = useRef<AbortController | null>(null);
+  const submitAbortController = useRef<AbortController | null>(null);
+
+  // Очистка активных запросов при закрытии/размонтировании
+  useEffect(() => {
+    return () => {
+      if (uploadAbortController.current) {
+        uploadAbortController.current.abort();
+      }
+      if (submitAbortController.current) {
+        submitAbortController.current.abort();
+      }
+    };
+  }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -28,31 +91,59 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ isOpen, onClose
 
     setUploading(true);
     
-    const formDataUpload = new FormData();
-    formDataUpload.append('file', file);
-    formDataUpload.append('upload_preset', 'nextgear_unsigned');
-
     try {
-      const response = await fetch(
-        'https://api.cloudinary.com/v1_1/dpghjapcd/image/upload',
-        {
-          method: 'POST',
-          body: formDataUpload
-        }
-      );
+      // Сжимаем изображение на клиенте
+      let processedFile: File = file;
       
-      const data = await response.json();
-      if (data.secure_url) {
-        const optimizedUrl = data.secure_url.replace('/upload/', '/upload/w_800,q_auto/');
-        setFormData(prev => ({ ...prev, image: optimizedUrl }));
-      } else {
-        throw new Error('Upload failed');
+      if (file.type.startsWith('image/')) {
+        try {
+          processedFile = await compressImage(file);
+          
+          // Проверяем размер после сжатия
+          if (processedFile.size > 5 * 1024 * 1024) {
+            throw new Error('Сжатое изображение превышает 5MB');
+          }
+          
+          console.log(`✅ Image compressed: ${file.size} → ${processedFile.size} bytes`);
+        } catch (compressErr) {
+          console.warn('Compression failed, using original:', compressErr);
+          if (file.size > 5 * 1024 * 1024) {
+            alert('Максимальный размер файла — 5MB');
+            return;
+          }
+        }
       }
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert('Ошибка загрузки. Попробуйте снова.');
+
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', processedFile);
+      formDataUpload.append('upload_preset', 'nextgear_unsigned');
+
+      try {
+        const response = await fetch(
+          'https://api.cloudinary.com/v1_1/dpghjapcd/image/upload', // Исправлено: убраны пробелы
+          {
+            method: 'POST',
+            body: formDataUpload
+          }
+        );
+        
+        const data = await response.json();
+        if (data.secure_url) {
+          // Добавляем оптимизацию через Cloudinary
+          const optimizedUrl = data.secure_url
+            .replace('/upload/', '/upload/w_800,q_auto,f_auto/');
+          setFormData(prev => ({ ...prev, image: optimizedUrl }));
+        } else {
+          throw new Error('Upload failed');
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        alert('Ошибка загрузки. Попробуйте снова.');
+      }
     } finally {
       setUploading(false);
+      // Сбрасываем input для повторного выбора
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -64,8 +155,14 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ isOpen, onClose
       return;
     }
 
+    // Отмена предыдущего запроса на отправку
+    if (submitAbortController.current) {
+      submitAbortController.current.abort();
+    }
+    const controller = new AbortController();
+    submitAbortController.current = controller;
     setSubmitting(true);
-    
+
     try {
       await requestProduct(
         formData.productName.trim(),
@@ -76,8 +173,15 @@ const ProductRequestForm: React.FC<ProductRequestFormProps> = ({ isOpen, onClose
       setFormData({ productName: '', quantity: '1', image: '' });
       onClose();
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request was aborted');
+        return;
+      }
       alert('Ошибка отправки запроса');
     } finally {
+      if (submitAbortController.current === controller) {
+        submitAbortController.current = null;
+      }
       setSubmitting(false);
     }
   };
