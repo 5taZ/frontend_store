@@ -81,7 +81,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const refreshProducts = useCallback(async () => {
     try {
-      const  any[] = await api.getProducts();
+      const data: any[] = await api.getProducts(); // Исправлено: добавлено имя переменной 'data'
       setProducts(data.map((p: any) => ({
         id: p.id.toString(),
         name: p.name,
