@@ -164,7 +164,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (!user) return;
     
     // 🔥 УМНЫЕ ИНТЕРВАЛЫ ОБНОВЛЕНИЯ
-    const intervals: NodeJS.Timeout[] = [];
+    const intervals: number[] = []; // Исправлено: заменено NodeJS.Timeout[] на number[]
     
     // Заказы: 5 сек для ожидающих, 30 сек для остальных
     const ordersInterval = setInterval(async () => {
