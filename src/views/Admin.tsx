@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Trash2, Upload, Edit, Check, Box, XCircle, CheckCircle, ChevronRight } from 'lucide-react';
+import { Plus, X, Trash2, Upload, Edit, Check, Box, XCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { OrderStatus } from '../types';
 
@@ -20,7 +20,6 @@ const Admin: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
-  // ✅ Состояние для обработки запроса с ценой
   const [processingRequest, setProcessingRequest] = useState<{
     id: string;
     productName: string;
@@ -182,7 +181,6 @@ const Admin: React.FC = () => {
     setNotification({ message: approved ? 'Order confirmed' : 'Order rejected', type: approved ? 'success' : 'error' });
   };
 
-  // ✅ НОВОЕ: Начать обработку запроса с вводом цены
   const handleStartProcessRequest = (request: any) => {
     setProcessingRequest({
       id: request.id,
@@ -193,7 +191,6 @@ const Admin: React.FC = () => {
     });
   };
 
-  // ✅ НОВОЕ: Подтвердить запрос с ценой и добавить товар
   const handleApproveWithPrice = async () => {
     if (!processingRequest) return;
     
@@ -204,7 +201,6 @@ const Admin: React.FC = () => {
     }
 
     try {
-      // 1. Добавляем товар в каталог
       await addProduct({
         id: Date.now().toString(),
         name: processingRequest.productName,
@@ -216,7 +212,6 @@ const Admin: React.FC = () => {
         inStock: true,
       });
 
-      // 2. Одобряем запрос
       await processProductRequest(processingRequest.id, true);
       
       setNotification({ message: 'Товар добавлен в каталог!', type: 'success' });
@@ -239,7 +234,6 @@ const Admin: React.FC = () => {
         </div>
       )}
 
-      {/* ✅ Модалка для ввода цены */}
       {processingRequest && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-neutral-900 rounded-3xl w-full max-w-md p-6 border border-neutral-800">
@@ -326,15 +320,52 @@ const Admin: React.FC = () => {
 
           {isAdding && (
             <form onSubmit={handleSubmit} className="bg-neutral-900 p-4 rounded-xl space-y-3 mb-4">
-              <input type="text" placeholder="Product Name *" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white" value={formState.name} onChange={e => setFormState({...formState, name: e.target.value})} required />
-              <input type="number" placeholder="Price (BYN) *" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white" value={formState.price} onChange={e => setFormState({...formState, price: e.target.value})} required min="0.01" step="0.01" />
-              <input type="number" placeholder="Quantity *" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white" value={formState.quantity} onChange={e => setFormState({...formState, quantity: e.target.value})} min="1" required />
+              <input 
+                type="text" 
+                placeholder="Product Name *" 
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white" 
+                value={formState.name} 
+                onChange={e => setFormState({...formState, name: e.target.value})} 
+                required 
+              />
+              
+              {/* ✅ ДОБАВЛЕНО: поле description */}
+              <textarea 
+                placeholder="Description" 
+                className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white resize-none"
+                value={formState.description}
+                onChange={e => setFormState({...formState, description: e.target.value})}
+                rows={3}
+              />
+              
+              <div className="grid grid-cols-2 gap-3">
+                <input 
+                  type="number" 
+                  placeholder="Price (BYN) *" 
+                  className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white" 
+                  value={formState.price} 
+                  onChange={e => setFormState({...formState, price: e.target.value})} 
+                  required 
+                  min="0.01" 
+                  step="0.01" 
+                />
+                <input 
+                  type="number" 
+                  placeholder="Quantity *" 
+                  className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white" 
+                  value={formState.quantity} 
+                  onChange={e => setFormState({...formState, quantity: e.target.value})} 
+                  min="1" 
+                  required 
+                />
+              </div>
               
               <label className={`w-full bg-black border border-neutral-800 rounded-lg p-3 flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-50' : ''}`}>
                 <Upload size={20} className="text-neutral-500" />
                 <span className="text-sm text-neutral-400">{uploading ? 'Uploading...' : formState.image ? 'Change image' : 'Upload image'}</span>
                 <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} className="hidden" />
               </label>
+              
               {formState.image && (
                 <div className="relative w-full h-40">
                   <img src={formState.image} alt="Preview" className="w-full h-full object-cover rounded-lg" />
@@ -381,7 +412,6 @@ const Admin: React.FC = () => {
               </div>
               {request.image && <img src={request.image} alt="Product" className="w-full h-32 object-cover rounded-lg mb-3 bg-neutral-800" />}
               
-              {/* ✅ Новые кнопки с вводом цены */}
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-800">
                 <button 
                   onClick={() => handleRejectRequest(request.id)}
