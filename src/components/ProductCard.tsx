@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Check, Package, X } from 'lucide-react';
+import { Plus, Check, X } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -36,10 +36,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, isInCar
         </div>
       )}
 
-      <div className="bg-neutral-900 rounded-2xl border border-neutral-800 overflow-hidden group hover:border-neutral-700 transition-all duration-300 hover:shadow-xl hover:shadow-black/20 active:scale-[0.98]">
-        {/* ✅ При нажатии на фото открывается полный размер */}
+      <div className="bg-neutral-900 rounded-2xl border border-neutral-800 overflow-hidden group hover:border-neutral-700 transition-all duration-300 hover:shadow-xl hover:shadow-black/20 active:scale-[0.98] flex flex-col">
+        {/* Фото товара */}
         <div 
-          className="aspect-square bg-neutral-800/50 relative overflow-hidden cursor-pointer"
+          className="aspect-square bg-neutral-800/50 relative overflow-hidden cursor-pointer flex-shrink-0"
           onClick={() => product.image && setIsImageOpen(true)}
         >
           {product.image ? (
@@ -64,17 +64,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, isInCar
           )}
         </div>
         
-        <div className="p-4 space-y-3">
-          <div>
-            <h3 className="text-sm font-bold text-white line-clamp-1 mb-1 group-hover:text-red-500 transition-colors">
-              {product.name}
-            </h3>
-            <p className="text-xs text-neutral-400 line-clamp-2 leading-relaxed h-8">
+        {/* Контент карточки */}
+        <div className="p-4 flex flex-col flex-grow">
+          {/* Название */}
+          <h3 className="text-sm font-bold text-white mb-2 group-hover:text-red-500 transition-colors line-clamp-2">
+            {product.name}
+          </h3>
+          
+          {/* ✅ Описание - без ограничения высоты, красиво растягивается */}
+          {product.description && product.description !== 'No description' && (
+            <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
               {product.description}
             </p>
-          </div>
+          )}
           
-          <div className="flex items-center justify-between pt-2 border-t border-neutral-800/50">
+          {/* Нижняя часть - цена и кнопка */}
+          <div className="flex items-center justify-between mt-auto pt-3 border-t border-neutral-800/50">
             <div className="flex flex-col">
               <span className="text-lg font-bold text-white">{product.price} BYN</span>
               {displayQuantity !== null && (
@@ -93,7 +98,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, isInCar
               <button
                 onClick={() => !isInCart && onAddToCart(product)}
                 disabled={isOutOfStock || isInCart}
-                className={`relative p-3 rounded-xl transition-all duration-200 ${
+                className={`relative p-3 rounded-xl transition-all duration-200 flex-shrink-0 ${
                   isOutOfStock 
                     ? 'bg-neutral-800 cursor-not-allowed text-neutral-600' 
                     : isInCart
